@@ -1,0 +1,6 @@
+[submodule "wildbook-ia"]
+	path = wildbook-ia
+	url = git@github.com:WildMeOrg/wildbook-ia.git
+[submodule "wildbook"]
+	path = wildbook
+	url = git@github.com:WildMeOrg/wildbook.git

@@ -1,0 +1,178 @@
+version: '3.8'
+
+# Wildbook Infrastructure - Main Orchestration
+# Runs: PostgreSQL, WBIA (ML Service), Wildbook (Platform), OpenSearch, MailHog
+
+services:
+  # PostgreSQL Database
+  # Creates separate databases for WBIA and Wildbook
+  db:
+    image: postgres:13.4
+    container_name: wildbook-postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+    labels:
+      - autoheal=true
+    user: postgres
+    volumes:
+      - db-pgdata:/var/lib/postgresql/data
+      # DB initialization scripts (creates wbia and wildbook databases)
+      - ./wildbook/devops/development/.dockerfiles/db/initdb.d/:/docker-entrypoint-initdb.d/
+      - ./wildbook/devops/development/.dockerfiles/db/postgresql.conf:/etc/postgresql/postgresql.conf
+    networks:
+      - wildbook-net
+    ports:
+      - "5433:5432"  # Exposed for development/debugging
+    command: -c config_file=/etc/postgresql/postgresql.conf
+    environment:
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-postgres}"
+      # WBIA database
+      WBIA_DB_NAME: "${WBIA_DB_NAME:-wbia}"
+      WBIA_DB_USER: "${WBIA_DB_USER:-wbia}"
+      WBIA_DB_PASSWORD: "${WBIA_DB_PASSWORD:-wbia}"
+      # Wildbook database
+      WILDBOOK_DB_NAME: "${WILDBOOK_DB_NAME:-wildbook}"
+      WILDBOOK_DB_USER: "${WILDBOOK_DB_USER:-wildbook}"
+      WILDBOOK_DB_PASSWORD: "${WILDBOOK_DB_PASSWORD:-wildbook}"
+    restart: unless-stopped
+
+  # WBIA - Machine Learning Service
+  # Handles animal detection, identification, and classification
+  wbia:
+    build:
+      context: ./wildbook-ia
+      dockerfile: Dockerfile
+    image: wildme/wbia:${TAG:-latest}
+    container_name: wildbook-wbia
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - wbia-data:/data/db
+      - wbia-cache:/cache
+    networks:
+      - wildbook-net
+    ports:
+      - "5000:5000"  # WBIA API endpoint
+    environment:
+      PYTHONUNBUFFERED: "1"
+      WBIA_DB_URI: "${WBIA_DB_URI:-postgresql://wbia:wbia@db:5432/wbia}"
+      HOUSTON_CLIENT_ID: "${HOUSTON_CLIENT_ID:-}"
+      HOUSTON_CLIENT_SECRET: "${HOUSTON_CLIENT_SECRET:-}"
+    restart: unless-stopped
+    # WBIA has built-in healthcheck, labeled for autoheal
+
+  # Wildbook - Main Platform
+  # Java/Tomcat application providing the web interface
+  wildbook:
+    build:
+      context: ./wildbook
+      dockerfile: Dockerfile
+    image: wildme/wildbook:${TAG:-latest}
+    container_name: wildbook-app
+    depends_on:
+      db:
+        condition: service_healthy
+      wbia:
+        condition: service_started
+    labels:
+      - autoheal=true
+    volumes:
+      - ./wildbook/logs/:/usr/local/tomcat/logs/
+    networks:
+      - wildbook-net
+    ports:
+      - "8080:8080"  # Wildbook web interface
+    environment:
+      SITE_NAME: "${SITE_NAME:-Wildbook}"
+      PUBLIC_URL: "${PUBLIC_URL:-/react/}"
+      JAVA_OPTS: "-Djava.awt.headless=true -Xms4096m -Xmx4096m"
+      # Database connection
+      WILDBOOK_DB_CONNECTION_URL: "${WILDBOOK_DB_CONNECTION_URL:-jdbc:postgresql://db:5432/wildbook}"
+      WILDBOOK_DB_USER: "${WILDBOOK_DB_USER:-wildbook}"
+      WILDBOOK_DB_PASSWORD: "${WILDBOOK_DB_PASSWORD:-wildbook}"
+    restart: unless-stopped
+
+  # OpenSearch - Search Engine
+  # Handles full-text search and indexing for Wildbook
+  opensearch:
+    image: opensearchproject/opensearch:2.15.0
+    container_name: wildbook-opensearch
+    healthcheck:
+      test: ["CMD-SHELL", "curl --silent --fail 127.0.0.1:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+    labels:
+      - autoheal=true
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      - wildbook-net
+    ports:
+      - "9200:9200"  # REST API
+      - "9300:9300"  # Node communication
+    environment:
+      - plugins.security.disabled=true
+      - node.name=opensearch
+      - cluster.initial_master_nodes=opensearch
+      - bootstrap.memory_lock=true
+      - cluster.routing.allocation.disk.threshold_enabled=${ES_THRESHOLD:-true}
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD:-Admin123!}"
+    restart: unless-stopped
+
+  # MailHog - Development Email Testing
+  # Catches all outbound emails for testing (development only)
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: wildbook-mailhog
+    networks:
+      - wildbook-net
+    ports:
+      - "1025:1025"  # SMTP server
+      - "8025:8025"  # Web UI
+    profiles:
+      - dev  # Only starts with: docker-compose --profile dev up
+    restart: unless-stopped
+
+  # Autoheal - Automatic Container Recovery
+  # Restarts unhealthy containers based on healthchecks
+  autoheal:
+    image: willfarrell/autoheal:latest
+    container_name: wildbook-autoheal
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: "autoheal"
+      AUTOHEAL_INTERVAL: 15
+      AUTOHEAL_START_PERIOD: 600
+      AUTOHEAL_DEFAULT_STOP_TIMEOUT: 60
+    restart: always
+
+networks:
+  wildbook-net:
+    name: wildbook-network
+    driver: bridge
+
+volumes:
+  # PostgreSQL data
+  db-pgdata:
+    name: wildbook-db-data
+
+  # WBIA volumes
+  wbia-data:
+    name: wildbook-wbia-data
+  wbia-cache:
+    name: wildbook-wbia-cache
+
+  # OpenSearch data
+  opensearch-data:
+    name: wildbook-opensearch-data
