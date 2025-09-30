@@ -1,0 +1,27 @@
+# Functional Testing Dependencies
+# BDD framework using Gherkin/Cucumber syntax
+
+# Core BDD framework
+behave==1.2.6
+
+# HTTP testing
+requests==2.31.0
+requests-toolbelt==1.0.0
+
+# Database testing
+psycopg2-binary==2.9.9
+sqlalchemy==2.0.23
+
+# Assertions and utilities
+assertpy==1.1
+python-dotenv==1.0.0
+
+# Screenshots and browser automation (optional)
+selenium==4.15.2
+Pillow==10.1.0
+
+# API testing
+jsonschema==4.20.0
+
+# Test reporting
+allure-behave==2.13.2

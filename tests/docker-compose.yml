@@ -1,0 +1,54 @@
+version: '3.8'
+
+# Standalone test runner for Wildbook functional tests
+# Use this to run tests against locally running services
+
+services:
+  tests:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: wildme/wildbook-tests:latest
+    container_name: wildbook-tests
+    volumes:
+      # Mount test results out
+      - ./reports:/tests/reports
+      # Mount test data (images, fixtures)
+      - ./test_data:/tests/test_data
+      # Optional: mount features for live editing
+      - ./features:/tests/features
+    environment:
+      # Service URLs
+      WILDBOOK_URL: "${WILDBOOK_URL:-http://wildbook:8080}"
+      WBIA_URL: "${WBIA_URL:-http://wbia:5000}"
+      OPENSEARCH_URL: "${OPENSEARCH_URL:-http://opensearch:9200}"
+
+      # Database URIs
+      WILDBOOK_DB_URI: "${WILDBOOK_DB_URI:-postgresql://wildbook:wildbook@db:5432/wildbook}"
+      WBIA_DB_URI: "${WBIA_DB_URI:-postgresql://wbia:wbia@db:5432/wbia}"
+
+      # Test configuration
+      TEST_TIMEOUT: "${TEST_TIMEOUT:-30}"
+      TEST_LONG_TIMEOUT: "${TEST_LONG_TIMEOUT:-120}"
+
+      # Test credentials
+      TEST_USERNAME: "${TEST_USERNAME:-test_user}"
+      TEST_PASSWORD: "${TEST_PASSWORD:-test_password}"
+
+      # Behave options
+      BEHAVE_TAGS: "${BEHAVE_TAGS:-}"
+      BEHAVE_FORMAT: "${BEHAVE_FORMAT:-pretty}"
+
+    # Override command for different test runs
+    # Examples:
+    # docker-compose run tests behave --tags=wbia
+    # docker-compose run tests behave features/health_checks.feature
+    command: ["behave", "--format", "pretty", "--junit", "--junit-directory", "reports/junit"]
+
+    networks:
+      - wildbook-tests
+
+networks:
+  wildbook-tests:
+    name: wildbook-tests-network
+    driver: bridge

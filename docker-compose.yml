@@ -157,6 +157,53 @@ services:
       AUTOHEAL_DEFAULT_STOP_TIMEOUT: 60
     restart: always
 
+  # Functional Tests - Behave/Gherkin BDD Tests
+  # Run with: docker-compose run tests
+  tests:
+    build:
+      context: ./tests
+      dockerfile: Dockerfile
+    image: wildme/wildbook-tests:${TAG:-latest}
+    container_name: wildbook-tests
+    depends_on:
+      db:
+        condition: service_healthy
+      wbia:
+        condition: service_started
+      wildbook:
+        condition: service_started
+      opensearch:
+        condition: service_healthy
+    volumes:
+      - ./tests/reports:/tests/reports
+      - ./tests/test_data:/tests/test_data
+      - ./tests/features:/tests/features
+    networks:
+      - wildbook-net
+    environment:
+      # Service URLs (using internal Docker network)
+      WILDBOOK_URL: "http://wildbook:8080"
+      WBIA_URL: "http://wbia:5000"
+      OPENSEARCH_URL: "http://opensearch:9200"
+
+      # Database URIs
+      WILDBOOK_DB_URI: "postgresql://${WILDBOOK_DB_USER:-wildbook}:${WILDBOOK_DB_PASSWORD:-wildbook}@db:5432/${WILDBOOK_DB_NAME:-wildbook}"
+      WBIA_DB_URI: "postgresql://${WBIA_DB_USER:-wbia}:${WBIA_DB_PASSWORD:-wbia}@db:5432/${WBIA_DB_NAME:-wbia}"
+
+      # Test configuration
+      TEST_TIMEOUT: "${TEST_TIMEOUT:-30}"
+      TEST_LONG_TIMEOUT: "${TEST_LONG_TIMEOUT:-120}"
+
+      # Test credentials
+      TEST_USERNAME: "${TEST_USERNAME:-test_user}"
+      TEST_PASSWORD: "${TEST_PASSWORD:-test_password}"
+
+    profiles:
+      - test  # Only starts with: docker-compose --profile test up
+
+    # Override with: docker-compose run tests behave --tags=wbia
+    command: ["behave", "--format", "pretty", "--junit", "--junit-directory", "reports/junit"]
+
 networks:
   wildbook-net:
     name: wildbook-network
