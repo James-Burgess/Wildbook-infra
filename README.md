@@ -27,13 +27,25 @@ docker-compose ps
 
 ## 📚 Documentation
 
+### Getting Started
 - **[Getting Started](docs/getting-started.md)** - Initial setup and first steps
-- **[Development Guide](docs/development.md)** - Development workflow and building
-- **[Testing Guide](docs/testing.md)** - Running and writing tests
 - **[Configuration](docs/configuration.md)** - Environment variables and settings
 - **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
-- **[Architecture](docs/architecture.md)** - System architecture and design
+
+### Development
+- **[Development Guide](docs/development.md)** - Development workflow and building
+- **[Testing Guide](docs/testing.md)** - Running and writing tests
+- **[API Reference](docs/api-reference.md)** - WBIA and Wildbook API documentation
+- **[Plugin System](docs/plugins.md)** - Available plugins and how to create your own
+- **[Contributing](CONTRIBUTING.md)** - How to contribute to the project
+
+### Operations
+- **[Production Deployment](docs/production-deployment.md)** - Production setup and operations
+- **[Security Guide](docs/security.md)** - Security best practices and hardening
 - **[Upgrade Plans](docs/upgrade-plans.md)** - ml-service migration roadmap
+
+### Architecture
+- **[WBIA Architecture](docs/wbia-architecture.md)** - Technical deep-dive into WBIA
 
 ## 🏗️ Architecture Overview
 
