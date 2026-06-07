@@ -828,3 +828,206 @@ wbia-core/
     ├── devlog.md                   # This file
     └── parity-analysis.md          # Full parity investigation log
 ```
+
+---
+
+## 2026-06-07 — WBIA build audit: wbia-core Dockerfile vs WBIA provision image
+
+### Motivation
+
+Previous devlog entries (06-06e, 06-06f) identified the remaining parity gap as
+library version differences (libjpeg, OpenCV) between Docker images. The wbia-core
+Dockerfile already uses `nvidia/cuda:11.7.1-cudnn8-runtime-ubuntu22.04` as base —
+the same as WBIA. Now we audit the full WBIA build chain to find any remaining
+differences.
+
+### WBIA build chain (from `wildbook-ia/devops/`)
+
+WBIA has a three-stage Docker build:
+
+1. **`wbia-base`** (`devops/base/Dockerfile`)
+   - Base: `nvidia/cuda:11.7.1-cudnn8-runtime-ubuntu22.04`
+   - Installs system deps via apt: `libopencv-dev`, `libboost-all-dev`, `libgdal-dev`,
+     `libeigen3-dev`, `libgeos-dev`, `libproj-dev`, `graphviz`, `python3-pyqt5`, etc.
+   - Creates `/virtualenv/env3` with `--system-site-packages`, pins
+     `pip==22.3.1`, `setuptools==59.5.0`, `wheel==0.38.4`
+   - Installs `cmake`, `ninja`, `scikit-build`, `setuptools_scm[toml]`, `cython`
+   - `LD_LIBRARY_PATH`: `/usr/local/cuda/lib64:/virtualenv/env3/lib:...`
+
+2. **`wbia-provision`** (`devops/provision/Dockerfile`)
+   - Clones all repos into `/wbia/`: `wbia-utool`, `wbia-vtool`, `wbia-tpl-pyhesaff`,
+     `wbia-tpl-pyflann`, `wildbook-ia`, plus plugins
+   - Constrains `setuptools<75` globally (for `pkg_resources` compat)
+   - Installs PyTorch with CUDA 11.7 early (before package builds)
+   - **Builds in order** via `run_developer_setup.sh` for each toolkit:
+     1. `wbia-utool` — pure Python, `pip install -r requirements.txt && setup.py develop && pip install -e .`
+     2. `wbia-vtool` — has `.so` (libsver), `build_ext --inplace` first
+     3. `wbia-tpl-pyhesaff` — has `.so` (libhesaff), same `build_ext --inplace` flow
+     4. `wbia-tpl-pyflann` — has `.so`
+     5. `wildbook-ia` — main app, `pip install -r requirements.txt && pip install .`
+   - After all builds: reinstalls `opencv-contrib-python-headless==4.7.0.72` over
+     any conflicting opencv packages
+
+3. **`wbia`** (`devops/Dockerfile`) — final image: copies `/virtualenv` and `/wbia`
+   from provision, runs smoke tests
+
+### wbia-core Dockerfile vs WBIA: diff analysis
+
+| Aspect | WBIA provision | wbia-core | Same? |
+|---|---|---|---|
+| **Base image** | `nvidia/cuda:11.7.1-cudnn8-runtime-ubuntu22.04` | Same | ✓ |
+| **System OpenCV** | `libopencv-dev` (apt) | Same | ✓ |
+| **Runtime OpenCV** | `opencv-contrib-python-headless==4.7.0.72` | Same via pyproject.toml | ✓ |
+| **Python** | `/virtualenv/env3` with `--system-site-packages` | System `python3` (global) | ✗ |
+| **Build tools** | cmake, ninja, scikit-build, setuptools_scm, cython | Same | ✓ |
+| **setuptools pin** | `<75` (pkg_resources compat) | `>=69` (no upper bound) | ⚠ |
+| **PyTorch/CUDA** | `torch==2.0.1` + `torchvision==0.15.2` (cu117) | Not installed | ✗ |
+| **Submodule build** | `run_developer_setup.sh` (installs requirements first) | `pip install --no-deps` (skips reqs) | ✗ |
+| **pip constraints** | `PIP_CONSTRAINT=/tmp/pip-constraints.txt` (setuptools<75) | None | ✗ |
+| **LD_LIBRARY_PATH** | `/usr/local/cuda/lib64:/virtualenv/env3/lib:` | `/virtualenv/env3/lib:` | ⚠ |
+
+### What `run_developer_setup.sh` does (vs our `--no-deps` approach)
+
+WBIA runs this for **each** submodule before `pip install`:
+
+```bash
+pip install -r requirements/build.txt     # cmake, ninja, scikit-build, wheel
+pip install -r requirements.txt           # ALL runtime deps (numpy, networkx, etc.)
+python setup.py build_ext --inplace       # compile .so
+python setup.py develop                   # dev install
+pip install -e .                          # editable install
+```
+
+Our Dockerfile does:
+```bash
+pip3 install --no-cache-dir --no-deps ./wbia-utool/       # skip utool's 15+ runtime deps
+pip3 install --no-cache-dir --no-deps ./wbia-vtool/       # skip vtool's deps
+cd wbia-tpl-pyhesaff && python3 setup.py build_ext --inplace \
+    && pip3 install --no-cache-dir --no-deps -e . && cd ..
+pip3 install --no-cache-dir . flask gunicorn  # wbia-core + its deps from pyproject.toml
+```
+
+**Impact of `--no-deps`**: Submodule runtime dependencies (like `networkx==2.5.1`,
+`numpy==1.20`, `ubelt`, `statsmodels`, etc.) are eventually installed by wbia-core's
+`pyproject.toml` → `pip install .` at the end. But version constraints differ:
+- WBIA's vtool specifies `numpy==1.20`; ours gets `numpy>=1.24,<2` from pyproject.toml
+- WBIA's vtool specifies `networkx==2.5.1` (exact pin); ours gets whatever
+  `opencv-contrib-python-headless` or numpy pulls in
+- `wbia-pyflann` is listed in WBIA's vtool runtime deps — we install it separately
+  via pyproject.toml
+
+### Verified: pyhesaff compilation is identical
+
+Both WBIA and wbia-core compile pyhesaff with the exact same `setup.py` and CMake
+files (from the same vendored submodule). Both use `build_ext --inplace` followed
+by `pip install -e .`. The resulting `libhesaff.so` is built against the system's
+`libopencv-dev` headers and linked against the system's `libopencv_*` shared libs.
+
+### Remaining differences that could affect SIFT parity
+
+1. **Runtime dependency versions**: numpy, scipy, networkx, scikit-image version
+   differences between WBIA's pinned constraints and our transitive resolution
+   could affect chip preprocessing (color conversion, histogram operations) before
+   features are extracted. These are Python-level differences, not C-level.
+
+2. **LD_LIBRARY_PATH**: WBIA includes `/usr/local/cuda/lib64` — irrelevant for
+   SIFT (no CUDA in pyhesaff) but could matter if any numpy/scipy operation paths
+   differ.
+
+3. **Virtualenv `--system-site-packages`**: WBIA's virtualenv inherits system
+   packages. Our global pip install may resolve different versions of `six`,
+   `python-dateutil`, etc. that cascade into numpy/scipy behavior.
+
+4. **PyTorch**: Not used in the SIFT pipeline. Shouldn't affect parity.
+
+### Conclusion
+
+The build environments are **structurally equivalent** — same base image, same
+OpenCV setup, same pyhesaff compilation. The remaining parity gap (ρ=0.32 mean,
+1.6× score ratio) is likely caused by **Python package version differences** in
+the transitive dependency tree (numpy, scipy, Pillow) rather than Docker image
+architecture. WBIA pins exact versions (e.g., `numpy==1.20`, `networkx==2.5.1`)
+while our `--no-deps` approach lets wbia-core's looser constraints
+(`numpy>=1.24,<2`) resolve to different versions.
+
+**Next step**: Pin exact dependency versions in wbia-core's pyproject.toml to
+match WBIA's requirements, or use `pip install -r requirements.txt` from each
+submodule before building (same as `run_developer_setup.sh`).
+
+---
+
+## 2026-06-07b — Full test suite run, Makefile, build audit verified
+
+### Image build
+
+Dockerfile already using `nvidia/cuda:11.7.1-cudnn8-runtime-ubuntu22.04` base
+(matching WBIA). Build succeeded — 8.89GB image with `opencv-contrib-python-headless==4.7.0.72`
+in pyproject.toml and pyhesaff source-compiled from submodules.
+
+### Test results (all passing)
+
+| Layer | Tests | Result | Time |
+|---|---|---|---|
+| Unit | 38 | ✓ all pass | 1.0s |
+| Benchmark (pytest) | 18 | ✓ all pass | 16.9s |
+| Replay (fixture) | 84 | ✓ all pass | 67s |
+| Replay (live WBIA) | 1 | ✗ (no WBIA running) | — |
+
+### Test infrastructure fixes
+
+1. **Makefile created** (`wbia-core/Makefile`) — standardised targets:
+   - `make test-unit` — 38 fast unit tests
+   - `make test-benchmark` — 18 benchmark pytests (needs dataset mount)
+   - `make test-parity` — COCO benchmark vs WBIA reference (from HOST, needs `docker` CLI)
+   - `make test-replay` — 84 fixture replay tests (self-contained)
+   - `make test-replay-live` — 1 live WBIA comparison (needs Docker socket + WBIA)
+   - `make build`, `make server`, `make shell`, `make clean`
+
+2. **`test-parity` must run from host**, not inside Docker. The `CoreTargetRunner`
+   uses `subprocess.run(["docker", "run", ...])` to start the wbia-core sidecar.
+   Running inside the container fails with "docker: command not found".
+
+3. **Benchmark tests need volume mount**: `tests/test-dataset/` is in `.dockerignore`.
+   Must mount with `-v $(pwd)/tests/test-dataset:/app/tests/test-dataset`.
+
+4. **Replay fixtures are baked into the image** — `testdata/` is NOT in `.dockerignore`.
+   84/85 tests run self-contained. Only `TestLiveWbiaComparison` needs WBIA.
+
+5. **Results directory** changed from root `test-run-results-*` to
+   `test-results/test-run-results-*`. `.gitignore` updated accordingly.
+
+### Parity analysis (post-image-build)
+
+| Query | Top-1 agree? | Spearman ρ | Score ratio (core/WBIA) |
+|---|---|---|---|
+| 0 | ✓ | **1.00** | 0.69× |
+| 1 | ✗ | 0.10 | 0.73× |
+| 2 | ✗ | -0.12 | 0.72× |
+
+Mean ρ: 0.33, Top-3 overlap: 67%, Score ratio: ~0.7× (consistent).
+Same results as before OpenCV pin — switching to the pip wheel didn't change parity.
+
+### Docs updated
+
+- `AGENTS.md` — fixed replay and benchmark instructions, added parity analysis section
+- `docs/development/testing-guide.md` — updated with correct commands, Makefile references
+- `docs/development/devlog.md` — this entry, plus 06-07 WBIA build audit
+- `.gitignore` — `test-run-results-*` → `test-results/`
+
+### Current blockers for ≥90% ρ
+
+1. **pyhesaff build differences** — our `.so` compiled in the same base image on the
+   same system, but different git commit / build flags than what's in `wildme/wbia:latest`.
+   This is the last systematic difference. The scoring pipeline is verified correct
+   (Q0 ρ=1.00).
+
+2. **Reference WBIA results may be stale** — the reference at
+   `tests/benchmark/reference/wbia-latest-10/` was recorded with an older WBIA build.
+   Could re-record with current `wildme/wbia:latest`.
+
+### Path forward
+
+- Option A: Re-record WBIA reference with `docker pull wildme/wbia:latest`
+- Option B: Build pyhesaff from the exact same source as WBIA's provision image
+- Option C: Extract features from WBIA directly, store as fixtures for scoring-only tests
+```

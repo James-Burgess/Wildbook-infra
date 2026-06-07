@@ -21,6 +21,7 @@ RUN set -ex \
     liblz4-dev \
     libgdal-dev \
     libeigen3-dev \
+    git \
     libgeos-dev \
     libproj-dev \
     python-is-python3 \

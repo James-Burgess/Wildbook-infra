@@ -156,7 +156,7 @@ def main():
         results_dir = Path(args.results_dir)
     else:
         ts = time.strftime("%Y%m%dT%H%M%S")
-        results_dir = Path(f"test-run-results-{ts}")
+        results_dir = Path(f"test-results/test-run-results-{ts}")
 
     # Inject reference if requested
     if args.reference:

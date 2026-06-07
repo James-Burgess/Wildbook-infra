@@ -8,7 +8,7 @@ wbia-core has four testing layers:
 |---|---|---|---|---|
 | **Unit** | Pure functions, config, data containers | < 2s | Always | `pytest tests/ --ignore=tests/benchmark --ignore=tests/replay` |
 | **Benchmark** | COCO wildlife dataset, multi-target regression | 5–60 min | On demand | `python tests/benchmark/run_benchmark.py` |
-| **Replay** | Recorded WBIA fixtures, parity verification | ~30s | With WBIA | `pytest tests/replay/ -m replay` |
+| **Replay** | Recorded WBIA fixtures, parity verification | ~1 min | Self-contained | `pytest tests/replay/ -k 'not TestLiveWbiaComparison'` |
 | **Server** | Flask sidecar health + identify endpoints | < 1s | Always | `pytest tests/benchmark/sidecar/test_sidecar.py` |
 
 ---
@@ -91,13 +91,12 @@ benchmark/
 ### CLI
 
 ```bash
-# Quick smoke test — 5 annots, 2 queries, wbia-core only (no comparison)
-python tests/benchmark/run_benchmark.py --n-annots 5 --n-queries 2
-
-# Reference-based comparison (fast — no WBIA startup)
-python tests/benchmark/run_benchmark.py \
+# Full benchmark (reference WBIA results, no WBIA container needed)
+# MUST run from host — uses docker CLI to start wbia-core sidecar
+python3 tests/benchmark/run_benchmark.py \
     --n-annots 10 --n-queries 3 \
-    --reference tests/benchmark/reference/wbia-latest-10/
+    --reference tests/benchmark/reference/wbia-latest-10/ \
+    --seed 42
 
 # Full comparison — all targets (slow — requires WBIA startup)
 python tests/benchmark/run_benchmark.py \
@@ -185,9 +184,12 @@ tests/test-dataset/
 
 ```bash
 cd wbia-core
-# Requires Docker + COCO dataset
-pytest tests/benchmark/ -v
-# 34 tests total — requires wbia-core:latest image to be built
+# Requires Docker + COCO dataset (test-dataset/ volume mount)
+docker run --rm \
+    -v $(pwd)/tests/test-dataset:/app/tests/test-dataset \
+    --entrypoint bash wbia-core:latest -c \
+    "pip install pytest -q && python -m pytest tests/benchmark/ -v --ignore=tests/benchmark/test_runner.py"
+# 18 tests total
 ```
 
 ---
@@ -246,49 +248,29 @@ replay/
 ├── compare_knn_wbia.py  # FLANN vs WBIA comparison
 ├── compare_features.py  # Feature extraction comparison
 ├── patch_wbia_schema.py # WBIA schema patcher for SQLite mode
-├── conftest.py          # Docker compose lifecycle
+├── conftest.py          # Docker compose lifecycle (for live comparison only)
 └── testdata/
-    └── fixtures/        # Recorded NPZ fixtures
+    └── fixtures/        # Recorded NPZ fixtures (baked into Docker image)
 ```
 
-### Recording fixtures
+### Fixture-based replay tests (self-contained)
+
+NPZ fixtures are in the Docker image. No WBIA needed, no mounts needed:
 
 ```bash
-# Start WBIA
-cd tests/replay && docker compose up -d
-
-# Record fixtures (waits for WBIA heartbeat)
-python tests/replay/record_fixtures.py
-
-# Run replay tests
-pytest tests/replay/ -m replay -v
+# 84 fixture-based tests (no external services)
+docker run --rm --entrypoint bash wbia-core:latest -c \
+  "pip install pytest -q && python -m pytest tests/replay/ -v -k 'not TestLiveWbiaComparison'"
 ```
 
-### Replay test flow
+### Live WBIA comparison (1 test)
 
-1. **Record**: Generate synthetic spot-pattern images → send to WBIA → record NPZ fixtures
-2. **Replay**: Load fixture → extract features with pyhesaff → run identify() → compare rankings
-3. **Compare**: Top-N overlap, Spearman ρ, score delta vs WBIA's recorded output
-
-### Fixture format
-
-```python
-# Each NPZ contains:
-{
-    "annot_uuids": ["uuid1", "uuid2", ...],     # Annotation UUIDs (query first)
-    "name_uuids": ["name_uuid", None, ...],      # Name UUIDs
-    "image_bytes": [b"...", b"...", ...],         # PNG-encoded images
-    "bboxes": [[x,y,w,h], ...],                   # Bounding boxes
-    "species": "zebra_grevys",                    # Species string
-    "raw_result": {...},                          # Full WBIA job result JSON
-}
-```
-
-### Parity test entrypoint
+Needs WBIA running on localhost:5000 + Docker socket:
 
 ```bash
-# Separate entrypoint for standalone parity testing
-docker run --rm --entrypoint scripts/entrypoints/test-entrypoint.sh wbia-core:latest
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock --network host \
+  -e WBIA_URL=http://localhost:5000 --entrypoint bash wbia-core:latest -c \
+  "pip install pytest -q && python -m pytest tests/replay/ -v -k 'TestLiveWbiaComparison'"
 ```
 
 ---
@@ -303,43 +285,46 @@ docker build -t wbia-core:latest .                    # Build image once
 
 # --- Run tests ---
 
-# 1. Unit + integration (fast, no Docker needed if pyhesaff installed)
-pytest tests/ --ignore=tests/benchmark --ignore=tests/replay -v
-
-# 2. Unit + integration (in Docker, guarantees pyhesaff)
+# 1. Unit + integration (in Docker, guarantees pyhesaff)
 docker run --rm --entrypoint bash wbia-core:latest -c \
   "pip install pytest -q && pytest tests/ --ignore=tests/benchmark --ignore=tests/replay -v"
 
-# 3. Sidecar endpoint tests
+# 2. Sidecar endpoint tests
 docker run --rm --entrypoint bash wbia-core:latest -c \
   "pip install pytest -q && pytest tests/benchmark/sidecar/test_sidecar.py -v"
 
-# 4. COCO benchmark (small)
-python tests/benchmark/run_benchmark.py --n-annots 5 --n-queries 2
+# 3. Benchmark pytest tests (needs dataset volume mount)
+docker run --rm \
+    -v $(pwd)/tests/test-dataset:/app/tests/test-dataset \
+    --entrypoint bash wbia-core:latest -c \
+    "pip install pytest -q && pytest tests/benchmark/ -v --ignore=tests/benchmark/test_runner.py"
 
-# 5. COCO benchmark (full comparison, all targets)
-python tests/benchmark/run_benchmark.py \
+# 4. Parity analysis (from HOST — uses docker CLI to start sidecar)
+python3 tests/benchmark/run_benchmark.py \
     --n-annots 10 --n-queries 3 \
-    --targets wbia-core wbia-latest wbia-nightly wbia-develop
+    --reference tests/benchmark/reference/wbia-latest-10/ \
+    --seed 42
 
-# 6. Analyze results
-python tests/benchmark/analyze.py report test-run-results-*
+# 5. Analyze parity results
+python3 tests/benchmark/analyze.py report test-results/<run-dir>/
 
-# 7. Replay/fixture tests (requires WBIA + recorded fixtures)
-cd tests/replay && docker compose up -d && python record_fixtures.py
-cd ../.. && pytest tests/replay/ -m replay -v
+# 6. Replay/fixture tests (self-contained, 84 tests)
+docker run --rm --entrypoint bash wbia-core:latest -c \
+  "pip install pytest -q && pytest tests/replay/ -v -k 'not TestLiveWbiaComparison'"
 
-# 8. All benchmark + unit tests combined
-pytest tests/ --ignore=tests/replay -v
+# 7. Replay live WBIA comparison (1 test, needs WBIA on localhost:5000)
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock --network host \
+  -e WBIA_URL=http://localhost:5000 --entrypoint bash wbia-core:latest -c \
+  "pip install pytest -q && pytest tests/replay/ -v -k 'TestLiveWbiaComparison'"
 ```
 
 ## Test Commands Summary Table
 
 | Command | What it tests | Runtime | Prerequisites |
-|---|---|---|---|
-| `pytest tests/ --ignore=tests/benchmark --ignore=tests/replay` | Unit + pipeline + scoring | < 2s | pyhesaff (or Docker) |
-| `pytest tests/benchmark/sidecar/test_sidecar.py` | Flask app endpoints | < 1s | Docker |
-| `python tests/benchmark/run_benchmark.py --n-annots 5 --n-queries 2` | COCO smoke test | ~1 min | Docker + COCO dataset |
-| `python tests/benchmark/run_benchmark.py --n-annots 200 --n-queries 20 --targets wbia-core wbia-latest` | Large-scale regression | 30–60 min | Docker + COCO dataset + WBIA images |
-| `pytest tests/replay/ -m replay` | WBIA fixture replay | ~30s | WBIA container + recorded fixtures |
+|---|---|---|---|---|
+| `make test-unit` | Unit + pipeline + scoring | < 2s | Docker |
+| `make test-benchmark` | Benchmark pytest tests | ~20s | Docker + COCO dataset |
+| `make test-parity` | COCO parity vs WBIA reference | ~10s | Host with Docker CLI |
+| `make test-replay` | WBIA fixture replay (84 tests) | ~1 min | Docker (fixtures in image) |
+| `make test-replay-live` | Live WBIA comparison (1 test) | ~30s | Docker socket + WBIA on :5000 |
 | `python tests/benchmark/analyze.py report <dir>` | Result analysis | < 5s | Completed benchmark run |
