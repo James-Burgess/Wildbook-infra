@@ -21,11 +21,13 @@ def _enabled() -> bool:
 def _setup():
     if not _enabled():
         return
-    handler = logging.StreamHandler()
+    log_path = os.environ.get("WBIA_CORE_DEBUG_FILE", "/tmp/wbia-core-debug.log")
+    handler = logging.FileHandler(log_path, mode="a")
     handler.setFormatter(logging.Formatter("%(message)s"))
     _logger.addHandler(handler)
     _logger.setLevel(logging.DEBUG)
     _logger.propagate = False
+    _logger.debug("")  # flush/sync header
 
 
 _setup()

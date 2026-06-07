@@ -17,11 +17,11 @@ RUN set -ex \
     cmake \
     libboost-all-dev \
     libomp5 \
+    git \
     libomp-dev \
     liblz4-dev \
     libgdal-dev \
     libeigen3-dev \
-    git \
     libgeos-dev \
     libproj-dev \
     python-is-python3 \

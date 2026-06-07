@@ -19,7 +19,6 @@ from targets.wbia import WbiaTargetRunner
 
 TARGET_MAP = {
     "wbia-core": (CoreTargetRunner, "wbia-core:latest"),
-    "wbia-slim": (CoreTargetRunner, "wbia-slim:latest"),
     "wbia-latest": (WbiaTargetRunner, "wildme/wbia:latest"),
     "wbia-nightly": (WbiaTargetRunner, "wildme/wbia:nightly"),
     "wbia-develop": (WbiaTargetRunner, "wildme/wbia:develop"),
@@ -157,7 +156,7 @@ def main():
         results_dir = Path(args.results_dir)
     else:
         ts = time.strftime("%Y%m%dT%H%M%S")
-        results_dir = Path(f"test-results/test-run-results-{ts}")
+        results_dir = Path(f"test-run-results-{ts}")
 
     # Inject reference if requested
     if args.reference:
