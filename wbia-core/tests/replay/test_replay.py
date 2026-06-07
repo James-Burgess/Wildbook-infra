@@ -31,7 +31,6 @@ import pytest
 
 from wbia_core.config import HotSpotterConfig, IdentificationConfig
 from wbia_core.data import AnnotatedImage, FeatureSet
-from wbia_core.exceptions import NotInstalledError
 from wbia_core.pipeline import identify
 
 from .conftest import FIXTURES_DIR
@@ -359,8 +358,7 @@ class TestLiveWbiaComparison:
 def _build_database_from_fixture(fx: dict) -> list[AnnotatedImage]:
     """Build an AnnotatedImage list from a fixture by extracting features.
 
-    Requires ``wbia-pyhesaff`` (``pip install wbia-core[features]``).
-    If not available, raises ``NotInstalledError``.
+    Requires ``wbia-pyhesaff`` (hard dependency of wbia-core).
     """
     from wbia_core.features import extract_features
     from wbia_core.config import SiftConfig

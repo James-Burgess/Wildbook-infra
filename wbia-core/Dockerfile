@@ -1,34 +1,52 @@
-FROM python:3.10-bookworm
+FROM nvidia/cuda:11.7.1-cudnn8-runtime-ubuntu22.04
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+ENV LC_ALL=C.UTF-8 LANG=C.UTF-8
+
+RUN set -ex \
+ && apt-get update \
+ && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    ca-certificates \
     build-essential \
+    pkg-config \
+    python3 \
     python3-dev \
+    python3-pip \
+    python3-setuptools \
+    python3-venv \
     libopencv-dev \
     cmake \
-    git \
-    && rm -rf /var/lib/apt/lists/*
+    libboost-all-dev \
+    libomp5 \
+    libomp-dev \
+    liblz4-dev \
+    libgdal-dev \
+    libeigen3-dev \
+    libgeos-dev \
+    libproj-dev \
+    python-is-python3 \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir \
-    "numpy>=1.24" \
-    "opencv-contrib-python-headless>=4.8.0" \
-    "pydantic>=2.0" \
-    "wbia-pyflann>=4.0.4"
+RUN pip3 install --no-cache-dir 'setuptools>=69' 'pip>=23' cmake ninja scikit-build 'setuptools_scm[toml]' cython
 
-ARG PYHESAFF_REPO=https://github.com/WildMeOrg/wbia-tpl-pyhesaff.git
-RUN git clone --depth 1 $PYHESAFF_REPO /tmp/wbia-tpl-pyhesaff && \
-    cd /tmp/wbia-tpl-pyhesaff && \
-    pip install --no-cache-dir -r requirements/build.txt && \
-    pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir . && \
-    rm -rf /tmp/wbia-tpl-pyhesaff
-
+COPY . /app
 WORKDIR /app
 
-COPY . /app/wbia-core
-RUN pip install --no-cache-dir --no-deps -e /app/wbia-core
+# Build toolkits in dependency order.  pyhesaff uses WBIA's build_ext --inplace
+# workflow to match the compiled C++ output exactly.
+ENV SETUPTOOLS_SCM_PRETEND_VERSION=4.0.6
+RUN pip3 install --no-cache-dir --no-deps ./wbia-utool/
+ENV SETUPTOOLS_SCM_PRETEND_VERSION=4.0.3
+RUN pip3 install --no-cache-dir --no-deps ./wbia-vtool/
+ENV SETUPTOOLS_SCM_PRETEND_VERSION=4.0.0
+RUN cd wbia-tpl-pyhesaff \
+    && python3 setup.py build_ext --inplace \
+    && pip3 install --no-cache-dir --no-deps -e . \
+    && cd ..
 
-COPY tests/replay/testdata/fixtures /tmp/fixtures
-COPY tests/replay/parity_test.py /app/parity_test.py
+RUN pip3 install --no-cache-dir . flask gunicorn
 
-WORKDIR /app
-CMD ["python", "parity_test.py"]
+ENV LD_LIBRARY_PATH /virtualenv/env3/lib:${LD_LIBRARY_PATH}
+
+EXPOSE 5000
+ENTRYPOINT ["scripts/entrypoints/server-entrypoint.sh"]

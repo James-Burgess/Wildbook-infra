@@ -22,3 +22,4 @@ For package usage, see the [public API documentation](../docs/) in `wildbook-doc
 | 2026-06-04 | pyhesaff SIFT for feature extraction | [0003-feature-extraction.md](decisions/0003-feature-extraction.md) |
 | 2026-06-04 | faiss knn over FLANN | [0004-knn-backend.md](decisions/0004-knn-backend.md) |
 | 2026-06-04 | Stateless pipeline, no IBEISController | [0005-stateless-pipeline.md](decisions/0005-stateless-pipeline.md) |
+| 2026-06-06 | Submodule-source build for C++ deps | [0006-submodule-deps.md](decisions/0006-submodule-deps.md) |

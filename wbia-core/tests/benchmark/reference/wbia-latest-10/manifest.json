@@ -1,0 +1,10 @@
+{
+  "target": "wbia-latest",
+  "image": "wildme/wbia:latest",
+  "container_id": "fa7e740ac83a88a8734605738e21505220d2d7bdd928d3202144009bfebc5b1f",
+  "started_at": "2026-06-06T10:53:32Z",
+  "finished_at": "2026-06-06T10:54:19Z",
+  "n_queries": 3,
+  "total_timing_ms": 47498.28416397213,
+  "errors": []
+}

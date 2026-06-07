@@ -1,4 +1,4 @@
-"""Tests for wbia_core.features (falls back to OpenCV SIFT)."""
+"""Tests for wbia_core.features (pyhesaff SIFT)."""
 
 import numpy as np
 import pytest
@@ -6,7 +6,7 @@ import pytest
 from wbia_core.config import SiftConfig
 
 
-def test_extract_features_with_opencv_fallback():
+def test_extract_features():
     from wbia_core.features import extract_features
 
     img = np.random.randint(0, 256, (100, 100, 3), dtype=np.uint8)

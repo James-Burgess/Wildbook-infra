@@ -16,8 +16,8 @@ from __future__ import annotations
 import numpy as np
 
 from wbia_core.config import IdentificationConfig
-from wbia_core.data import AnnotatedImage, Match, ScoredMatch
-from wbia_core.knn import build_global_index, query_index
+from wbia_core.data import AnnotatedImage, FeatureSet, Match, ScoredMatch
+from wbia_core.knn import build_global_index, exact_knn, query_index
 from wbia_core.scoring import per_feature_fg, score_matches
 from wbia_core.spatial import spatial_verify
 
@@ -59,26 +59,49 @@ def identify(
     # ---- 1. Build global FLANN index over ALL annotations ----
     # WBIA uses daid_list order → same order as database list
     all_features = [ann.features for ann in database]
-    global_index, annot_of_desc, feat_of_desc = build_global_index(
-        all_features,
-        algorithm=hs.flann_algorithm,
-        trees=hs.flann_trees,
-        random_seed=hs.flann_random_seed,
-    )
-    n_total = annot_of_desc.shape[0]
 
-    # ---- 2. Query global index ----
-    raw_dists, raw_labels = query_index(
-        global_index,
-        query_features,
-        k_total,
-        checks=hs.flann_checks,
-        cores=hs.flann_cores,
-    )
+    if hs.flann_algorithm == "exact":
+        # Exact N-N: concatenate all descriptors, use numpy dot product
+        import numpy as _np
+
+        all_descs = _np.concatenate([fs.descriptors for fs in all_features], axis=0)
+        n_total = all_descs.shape[0]
+        annot_of_desc = _np.empty(n_total, dtype=_np.int32)
+        feat_of_desc = _np.empty(n_total, dtype=_np.int32)
+        offset = 0
+        for i, fs in enumerate(all_features):
+            n = len(fs)
+            annot_of_desc[offset : offset + n] = i
+            feat_of_desc[offset : offset + n] = _np.arange(n, dtype=_np.int32)
+            offset += n
+        db_feats = FeatureSet(
+            keypoints=_np.empty((n_total, 6), dtype=_np.float64),
+            descriptors=all_descs,
+        )
+        raw_dists, raw_labels = exact_knn(query_features, db_feats, k_total)
+    else:
+        global_index, annot_of_desc, feat_of_desc = build_global_index(
+            all_features,
+            algorithm=hs.flann_algorithm,
+            trees=hs.flann_trees,
+            random_seed=hs.flann_random_seed,
+        )
+        n_total = annot_of_desc.shape[0]
+
+        # ---- 2. Query global index ----
+        raw_dists, raw_labels = query_index(
+            global_index,
+            query_features,
+            k_total,
+            checks=hs.flann_checks,
+            cores=hs.flann_cores,
+        )
 
     # Post-hoc distance normalisation (WBIA VEC_PSEUDO_MAX_DISTANCE_SQRD)
+    # WBIA divides raw SSE by 524288, then takes sqrt (sqrd_dist_on=False default).
     max_distance_sqrd = 2.0 * (512.0**2.0)
-    dists = np.sqrt(np.maximum(raw_dists, 0.0) / max_distance_sqrd).astype(np.float64)
+    dists = (np.maximum(raw_dists, 0.0) / max_distance_sqrd).astype(np.float64)
+    dists = np.sqrt(dists)
     labels = raw_labels.astype(np.int64)
 
     n_qfxs = dists.shape[0]
@@ -122,10 +145,10 @@ def identify(
         fg_weights = None
         q_fgw = None
 
-    # ---- 5. LNBNN + FG → flat match list ----
-    # WBIA keeps ALL K+Kpad voting columns, not just the first K valid ones.
-    # The 5th (Kpad) column often has vdist > ndist giving negative LNBNN
-    # weights — these must be included to match WBIA's csum total.
+    # ---- 5. WBIA filter chain → flat match list ----
+    # WBIA multiplies ALL active filter columns:
+    #   weight = lnbnn * bar_l2 * (const) * (fg) * (ratio)
+    # bar_l2 = 1 - vdist  is always ON in WBIA's pipeline.
     matches: list[Match] = []
     for qfx in range(n_qfxs):
         for j in range(k + kpad):
@@ -145,7 +168,7 @@ def identify(
                     qfx=qfx,
                     daid=db_idx,
                     dfx=dfx,
-                    dist=float(w),
+                    dist=w,
                     name_uuid=database[db_idx].name_uuid,
                 )
             )
