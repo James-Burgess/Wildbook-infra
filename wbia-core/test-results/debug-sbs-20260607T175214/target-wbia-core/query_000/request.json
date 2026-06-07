@@ -1,0 +1,74 @@
+{
+  "query_image_b64": "<base64 3288068 bytes>",
+  "query_bbox": [
+    1270,
+    673,
+    629,
+    357
+  ],
+  "query_theta": 0.0,
+  "query_species": "zebra_plains",
+  "database": [
+    {
+      "aid": "coco-annot-5852",
+      "image_b64": "<base64 3917176 bytes>",
+      "bbox": [
+        755,
+        716,
+        1254,
+        682
+      ],
+      "theta": 0.0,
+      "name_uuid": null,
+      "species": "zebra_plains"
+    },
+    {
+      "aid": "coco-annot-5160",
+      "image_b64": "<base64 3205500 bytes>",
+      "bbox": [
+        947,
+        1042,
+        354,
+        237
+      ],
+      "theta": 0.0,
+      "name_uuid": null,
+      "species": "zebra_plains"
+    },
+    {
+      "aid": "coco-annot-1901",
+      "image_b64": "<base64 2124744 bytes>",
+      "bbox": [
+        37,
+        865,
+        445,
+        311
+      ],
+      "theta": 0.0,
+      "name_uuid": null,
+      "species": "zebra_plains"
+    },
+    {
+      "aid": "coco-annot-2304",
+      "image_b64": "<base64 2473284 bytes>",
+      "bbox": [
+        1924,
+        1054,
+        715,
+        570
+      ],
+      "theta": 0.0,
+      "name_uuid": null,
+      "species": "zebra_plains"
+    }
+  ],
+  "config": {
+    "pipeline_root": "vsmany",
+    "K": 4,
+    "Knorm": 1,
+    "Kpad": 0,
+    "fg_on": false,
+    "sv_on": false,
+    "flann_algorithm": "kdtree"
+  }
+}

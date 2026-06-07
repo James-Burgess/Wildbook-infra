@@ -1,6 +1,7 @@
 # Algorithmic Differences: wbia-core vs WBIA HotSpotter Pipeline
 
 Last verified: 2026-06-07. Based on source reading of `wildbook-ia/wbia/algo/hots/`.
+Phase 1 (Kpad dynamic, name-level scoring, canonical alignment) implemented 2026-06-07.
 
 ## Summary
 
@@ -8,7 +9,7 @@ wbia-core implements a **simplified subset** of WBIA's HotSpotter pipeline. The 
 
 ---
 
-## 1. Normalizer Selection Rule
+## 1. Normalizer Selection Rule  [TODO — Phase 2]
 
 | | WBIA | wbia-core |
 |---|---|---|

@@ -1,0 +1,10 @@
+{
+  "target": "wbia-develop",
+  "image": "wildme/wbia:develop",
+  "container_id": "66e8f837199a42826edfa78f2aff288bbaef00a18986ef63ba9f3bad56e2ab91",
+  "started_at": "2026-06-07T20:25:13Z",
+  "finished_at": "2026-06-07T20:25:59Z",
+  "n_queries": 2,
+  "total_timing_ms": 45527.76171400001,
+  "errors": []
+}

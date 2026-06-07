@@ -1,0 +1,274 @@
+[
+  {
+    "annot_id": 434,
+    "image_id": 391,
+    "bbox": [
+      775,
+      779,
+      1281,
+      869
+    ],
+    "species": "zebra_plains",
+    "individual_ids": [
+      433,
+      434
+    ],
+    "width": 3000,
+    "height": 2000,
+    "is_query": true,
+    "query_index": 0
+  },
+  {
+    "annot_id": 433,
+    "image_id": 390,
+    "bbox": [
+      809,
+      646,
+      1204,
+      946
+    ],
+    "species": "zebra_plains",
+    "individual_ids": [
+      433,
+      434
+    ],
+    "width": 3000,
+    "height": 2000,
+    "is_query": false,
+    "query_index": null
+  },
+  {
+    "annot_id": 2752,
+    "image_id": 1930,
+    "bbox": [
+      222,
+      213,
+      2472,
+      1443
+    ],
+    "species": "zebra_plains",
+    "individual_ids": [
+      6747,
+      6745,
+      2753,
+      2752,
+      2740,
+      2751,
+      4383,
+      4382,
+      150
+    ],
+    "width": 3000,
+    "height": 2250,
+    "is_query": true,
+    "query_index": 1
+  },
+  {
+    "annot_id": 6745,
+    "image_id": 4818,
+    "bbox": [
+      2275,
+      844,
+      395,
+      294
+    ],
+    "species": "zebra_plains",
+    "individual_ids": [
+      6747,
+      6745,
+      2753,
+      2752,
+      2740,
+      2751,
+      4383,
+      4382,
+      150
+    ],
+    "width": 3000,
+    "height": 2000,
+    "is_query": false,
+    "query_index": null
+  },
+  {
+    "annot_id": 2753,
+    "image_id": 1931,
+    "bbox": [
+      201,
+      325,
+      2400,
+      1208
+    ],
+    "species": "zebra_plains",
+    "individual_ids": [
+      6747,
+      6745,
+      2753,
+      2752,
+      2740,
+      2751,
+      4383,
+      4382,
+      150
+    ],
+    "width": 3000,
+    "height": 2250,
+    "is_query": false,
+    "query_index": null
+  },
+  {
+    "annot_id": 4382,
+    "image_id": 3224,
+    "bbox": [
+      642,
+      779,
+      1208,
+      904
+    ],
+    "species": "zebra_plains",
+    "individual_ids": [
+      6747,
+      6745,
+      2753,
+      2752,
+      2740,
+      2751,
+      4383,
+      4382,
+      150
+    ],
+    "width": 3000,
+    "height": 2250,
+    "is_query": false,
+    "query_index": null
+  },
+  {
+    "annot_id": 6747,
+    "image_id": 4819,
+    "bbox": [
+      1356,
+      1049,
+      393,
+      231
+    ],
+    "species": "zebra_plains",
+    "individual_ids": [
+      6747,
+      6745,
+      2753,
+      2752,
+      2740,
+      2751,
+      4383,
+      4382,
+      150
+    ],
+    "width": 3000,
+    "height": 2000,
+    "is_query": false,
+    "query_index": null
+  },
+  {
+    "annot_id": 4383,
+    "image_id": 3225,
+    "bbox": [
+      651,
+      955,
+      1405,
+      900
+    ],
+    "species": "zebra_plains",
+    "individual_ids": [
+      6747,
+      6745,
+      2753,
+      2752,
+      2740,
+      2751,
+      4383,
+      4382,
+      150
+    ],
+    "width": 3000,
+    "height": 2250,
+    "is_query": false,
+    "query_index": null
+  },
+  {
+    "annot_id": 2740,
+    "image_id": 1921,
+    "bbox": [
+      891,
+      458,
+      1846,
+      1053
+    ],
+    "species": "zebra_plains",
+    "individual_ids": [
+      6747,
+      6745,
+      2753,
+      2752,
+      2740,
+      2751,
+      4383,
+      4382,
+      150
+    ],
+    "width": 3000,
+    "height": 2250,
+    "is_query": false,
+    "query_index": null
+  },
+  {
+    "annot_id": 150,
+    "image_id": 134,
+    "bbox": [
+      650,
+      804,
+      1542,
+      804
+    ],
+    "species": "zebra_plains",
+    "individual_ids": [
+      6747,
+      6745,
+      2753,
+      2752,
+      2740,
+      2751,
+      4383,
+      4382,
+      150
+    ],
+    "width": 3000,
+    "height": 2000,
+    "is_query": false,
+    "query_index": null
+  },
+  {
+    "annot_id": 2751,
+    "image_id": 1929,
+    "bbox": [
+      480,
+      471,
+      1825,
+      933
+    ],
+    "species": "zebra_plains",
+    "individual_ids": [
+      6747,
+      6745,
+      2753,
+      2752,
+      2740,
+      2751,
+      4383,
+      4382,
+      150
+    ],
+    "width": 3000,
+    "height": 2250,
+    "is_query": false,
+    "query_index": null
+  }
+]

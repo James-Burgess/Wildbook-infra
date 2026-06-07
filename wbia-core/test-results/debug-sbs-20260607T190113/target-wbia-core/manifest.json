@@ -1,0 +1,12 @@
+{
+  "target": "wbia-core",
+  "image": "wbia-core:latest",
+  "container_id": null,
+  "started_at": "2026-06-07T19:03:33Z",
+  "finished_at": null,
+  "n_queries": 5,
+  "total_timing_ms": 0,
+  "errors": [
+    "Failed to start: Command '['docker', 'run', '-d', '--name', 'wbia-core-6d41a3f5', '-p', '5000:5000', '-e', 'WBIA_CORE_DEBUG=1', 'wbia-core:latest']' timed out after 120 seconds"
+  ]
+}

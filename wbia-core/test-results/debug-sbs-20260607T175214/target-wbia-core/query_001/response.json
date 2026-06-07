@@ -1,0 +1,57 @@
+{
+  "query_index": 3,
+  "error": null,
+  "response": {
+    "annot_scores": [
+      {
+        "aid": "coco-annot-2304",
+        "num_matches": 780,
+        "score": 18.641211
+      },
+      {
+        "aid": "coco-annot-5160",
+        "num_matches": 785,
+        "score": 17.81227
+      },
+      {
+        "aid": "coco-annot-5852",
+        "num_matches": 442,
+        "score": 9.093088
+      },
+      {
+        "aid": "coco-annot-6514",
+        "num_matches": 454,
+        "score": 8.242354
+      }
+    ],
+    "timing_ms": 848.85
+  },
+  "raw_response": {
+    "response": {
+      "annot_scores": [
+        {
+          "aid": "coco-annot-2304",
+          "num_matches": 780,
+          "score": 18.641211
+        },
+        {
+          "aid": "coco-annot-5160",
+          "num_matches": 785,
+          "score": 17.81227
+        },
+        {
+          "aid": "coco-annot-5852",
+          "num_matches": 442,
+          "score": 9.093088
+        },
+        {
+          "aid": "coco-annot-6514",
+          "num_matches": 454,
+          "score": 8.242354
+        }
+      ],
+      "timing_ms": 848.85
+    },
+    "status": "completed"
+  }
+}

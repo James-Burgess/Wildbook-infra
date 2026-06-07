@@ -1,0 +1,117 @@
+{
+  "query_index": 2,
+  "error": null,
+  "response": {
+    "annot_scores": [
+      {
+        "aid": "coco-annot-2753",
+        "num_matches": 1158,
+        "score": 79.444595
+      },
+      {
+        "aid": "coco-annot-2751",
+        "num_matches": 804,
+        "score": 37.673584
+      },
+      {
+        "aid": "coco-annot-150",
+        "num_matches": 570,
+        "score": 22.41638
+      },
+      {
+        "aid": "coco-annot-2740",
+        "num_matches": 764,
+        "score": 19.712972
+      },
+      {
+        "aid": "coco-annot-6745",
+        "num_matches": 462,
+        "score": 8.764518
+      },
+      {
+        "aid": "coco-annot-4383",
+        "num_matches": 308,
+        "score": 6.469393
+      },
+      {
+        "aid": "coco-annot-433",
+        "num_matches": 397,
+        "score": 6.449127
+      },
+      {
+        "aid": "coco-annot-434",
+        "num_matches": 384,
+        "score": 6.310202
+      },
+      {
+        "aid": "coco-annot-4382",
+        "num_matches": 250,
+        "score": 5.65209
+      },
+      {
+        "aid": "coco-annot-6747",
+        "num_matches": 236,
+        "score": 4.571347
+      }
+    ],
+    "timing_ms": 942.55
+  },
+  "raw_response": {
+    "response": {
+      "annot_scores": [
+        {
+          "aid": "coco-annot-2753",
+          "num_matches": 1158,
+          "score": 79.444595
+        },
+        {
+          "aid": "coco-annot-2751",
+          "num_matches": 804,
+          "score": 37.673584
+        },
+        {
+          "aid": "coco-annot-150",
+          "num_matches": 570,
+          "score": 22.41638
+        },
+        {
+          "aid": "coco-annot-2740",
+          "num_matches": 764,
+          "score": 19.712972
+        },
+        {
+          "aid": "coco-annot-6745",
+          "num_matches": 462,
+          "score": 8.764518
+        },
+        {
+          "aid": "coco-annot-4383",
+          "num_matches": 308,
+          "score": 6.469393
+        },
+        {
+          "aid": "coco-annot-433",
+          "num_matches": 397,
+          "score": 6.449127
+        },
+        {
+          "aid": "coco-annot-434",
+          "num_matches": 384,
+          "score": 6.310202
+        },
+        {
+          "aid": "coco-annot-4382",
+          "num_matches": 250,
+          "score": 5.65209
+        },
+        {
+          "aid": "coco-annot-6747",
+          "num_matches": 236,
+          "score": 4.571347
+        }
+      ],
+      "timing_ms": 942.55
+    },
+    "status": "completed"
+  }
+}

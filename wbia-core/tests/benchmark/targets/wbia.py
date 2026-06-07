@@ -40,7 +40,7 @@ def _unwrap_uuid(val: Any) -> str:
     return str(val)
 
 
-def _post(url: str, data: dict, timeout: int = 120) -> Any:
+def _post(url: str, data: dict, timeout: int = 300) -> Any:
     import urllib.request
 
     body = json.dumps(data).encode("utf-8")
@@ -191,19 +191,47 @@ class WbiaTargetRunner(TargetRunner):
             "--dbdir /data/db --logdir /data/db/logs --web --containerized --production'"
         )
 
-        result = subprocess.run(
+        cmd = [
+            "docker",
+            "run",
+            "-d",
+            "--name",
+            name,
+            "-p",
+            f"{port}:5000",
+            "-v",
+            volume_name + ":/data/db",
+            "-v",
+            patch_mount,
+        ]
+
+        # Locate WBIA source for debug code mounts
+        _repo_root = pathlib.Path(__file__).resolve().parent.parent.parent.parent.parent
+        _wbia_src = _repo_root / "wildbook-ia" / "wbia" / "algo" / "hots"
+
+        # Mount debug log file directly (avoids gunicorn import ordering issues)
+        if self.config.debug_log_file:
+            log_file = self.config.debug_log_file
+            cmd.extend(["-v", f"{log_file}:/app/debug.log"])
+            cmd.extend(["-e", "WBIA_DEBUG=1"])
+            cmd.extend(["-e", "WBIA_DEBUG_FILE=/app/debug.log"])
+            cmd.extend(
+                [
+                    "-v",
+                    f"{_wbia_src / 'debug_log.py'}:"
+                    f"/virtualenv/env3/lib/python3.10/site-packages/wbia/algo/hots/debug_log.py:ro",
+                ]
+            )
+            cmd.extend(
+                [
+                    "-v",
+                    f"{_wbia_src / 'pipeline.py'}:"
+                    f"/virtualenv/env3/lib/python3.10/site-packages/wbia/algo/hots/pipeline.py:ro",
+                ]
+            )
+
+        cmd.extend(
             [
-                "docker",
-                "run",
-                "-d",
-                "--name",
-                name,
-                "-p",
-                f"{port}:5000",
-                "-v",
-                volume_name + ":/data/db",
-                "-v",
-                patch_mount,
                 "--add-host",
                 "host.docker.internal:host-gateway",
                 "-e",
@@ -213,7 +241,11 @@ class WbiaTargetRunner(TargetRunner):
                 image,
                 "-c",
                 entrypoint,
-            ],
+            ]
+        )
+
+        result = subprocess.run(
+            cmd,
             capture_output=True,
             text=True,
             timeout=120,

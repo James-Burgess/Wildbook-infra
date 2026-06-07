@@ -1,8 +1,7 @@
-.PHONY: build test test-unit test-parity test-benchmark test-benchmark-runner test-replay test-replay-live test-all run shell clean
+.PHONY: build test test-unit test-benchmark test-benchmark-runner test-replay test-replay-live test-all run shell clean
 
 IMAGE := wbia-core:latest
 TEST_DATASET := $(CURDIR)/tests/test-dataset
-REFERENCE := tests/benchmark/reference/wbia-latest-10
 
 # ---- Build ----
 build:
@@ -13,15 +12,6 @@ test: test-unit
 test-unit:
 	docker run --rm --entrypoint bash $(IMAGE) -c \
 		"pip install pytest -q && python -m pytest tests/ -q --ignore=tests/benchmark --ignore=tests/replay"
-
-# ---- Parity analysis (COCO benchmark vs WBIA reference, from HOST) ----
-# Runs from HOST because CoreTargetRunner uses docker CLI to start the sidecar.
-# Compares wbia-core rankings against recorded WBIA reference results.
-test-parity:
-	python3 tests/benchmark/run_benchmark.py \
-		--n-annots 10 --n-queries 3 \
-		--reference $(REFERENCE) \
-		--seed 42
 
 # ---- Benchmark pytest tests (inside container, needs dataset mount) ----
 test-benchmark:

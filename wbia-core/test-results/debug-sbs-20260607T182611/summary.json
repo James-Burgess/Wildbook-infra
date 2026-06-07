@@ -1,0 +1,313 @@
+{
+  "run_id": "debug-sbs-20260607T182611",
+  "config": {
+    "n_annots": 11,
+    "n_queries": 2,
+    "species": null,
+    "seed": 10,
+    "pipeline_root": "vsmany",
+    "K": 4,
+    "Knorm": 1,
+    "Kpad": 0,
+    "fg_on": false,
+    "sv_on": false,
+    "flann_algorithm": "kdtree"
+  },
+  "targets": [
+    "wbia-core",
+    "wbia-develop"
+  ],
+  "agreement": {
+    "top1_identical": true,
+    "all_rankings_match": false,
+    "max_score_delta": 15.588682249587762,
+    "spearman_below_pairs": [
+      {
+        "a": "wbia-core",
+        "b": "wbia-develop",
+        "rho": 0.9636363636363636
+      },
+      {
+        "a": "wbia-core",
+        "b": "wbia-develop",
+        "rho": 0.9878787878787879
+      }
+    ]
+  },
+  "per_query": [
+    {
+      "query_index": 0,
+      "top1_aids": {
+        "wbia-core": "coco-annot-433",
+        "wbia-develop": "coco-annot-433"
+      },
+      "max_score_delta": 14.236977159288642,
+      "spearman_pairs": [
+        {
+          "a": "wbia-core",
+          "b": "wbia-develop",
+          "rho": 0.9636363636363636
+        }
+      ],
+      "top3_overlap": {
+        "wbia-core": {
+          "wbia-core": 1.0,
+          "wbia-develop": 1.0
+        },
+        "wbia-develop": {
+          "wbia-core": 1.0,
+          "wbia-develop": 1.0
+        }
+      },
+      "score_stats": {
+        "wbia-core": {
+          "min": 2.7526,
+          "max": 112.4506,
+          "mean": 14.7225,
+          "std": 32.5853
+        },
+        "wbia-develop": {
+          "min": 3.9274,
+          "max": 126.6876,
+          "mean": 17.9313,
+          "std": 36.2683
+        }
+      }
+    },
+    {
+      "query_index": 1,
+      "top1_aids": {
+        "wbia-core": "coco-annot-2753",
+        "wbia-develop": "coco-annot-2753"
+      },
+      "max_score_delta": 15.588682249587762,
+      "spearman_pairs": [
+        {
+          "a": "wbia-core",
+          "b": "wbia-develop",
+          "rho": 0.9878787878787879
+        }
+      ],
+      "top3_overlap": {
+        "wbia-core": {
+          "wbia-core": 1.0,
+          "wbia-develop": 1.0
+        },
+        "wbia-develop": {
+          "wbia-core": 1.0,
+          "wbia-develop": 1.0
+        }
+      },
+      "score_stats": {
+        "wbia-core": {
+          "min": 4.5713,
+          "max": 79.4446,
+          "mean": 19.7464,
+          "std": 22.3059
+        },
+        "wbia-develop": {
+          "min": 7.1282,
+          "max": 95.0333,
+          "mean": 26.2193,
+          "std": 26.4692
+        }
+      }
+    }
+  ],
+  "errors": [],
+  "top_k_aids": {
+    "0": {
+      "wbia-core": [
+        {
+          "aid": "coco-annot-433",
+          "score": 112.4506
+        },
+        {
+          "aid": "coco-annot-2752",
+          "score": 5.7563
+        },
+        {
+          "aid": "coco-annot-2751",
+          "score": 4.284
+        },
+        {
+          "aid": "coco-annot-2740",
+          "score": 4.2213
+        },
+        {
+          "aid": "coco-annot-150",
+          "score": 4.0643
+        }
+      ],
+      "wbia-develop": [
+        {
+          "aid": "coco-annot-433",
+          "score": 126.6876
+        },
+        {
+          "aid": "coco-annot-2752",
+          "score": 7.9601
+        },
+        {
+          "aid": "coco-annot-2751",
+          "score": 6.6991
+        },
+        {
+          "aid": "coco-annot-2740",
+          "score": 6.4214
+        },
+        {
+          "aid": "coco-annot-2753",
+          "score": 6.1634
+        }
+      ]
+    },
+    "1": {
+      "wbia-core": [
+        {
+          "aid": "coco-annot-2753",
+          "score": 79.4446
+        },
+        {
+          "aid": "coco-annot-2751",
+          "score": 37.6736
+        },
+        {
+          "aid": "coco-annot-150",
+          "score": 22.4164
+        },
+        {
+          "aid": "coco-annot-2740",
+          "score": 19.713
+        },
+        {
+          "aid": "coco-annot-6745",
+          "score": 8.7645
+        }
+      ],
+      "wbia-develop": [
+        {
+          "aid": "coco-annot-2753",
+          "score": 95.0333
+        },
+        {
+          "aid": "coco-annot-2751",
+          "score": 49.4346
+        },
+        {
+          "aid": "coco-annot-150",
+          "score": 31.5458
+        },
+        {
+          "aid": "coco-annot-2740",
+          "score": 29.1396
+        },
+        {
+          "aid": "coco-annot-6745",
+          "score": 12.9129
+        }
+      ]
+    }
+  },
+  "top3_overall_overlap": {
+    "wbia-core -> wbia-develop": 1.0,
+    "wbia-develop -> wbia-core": 1.0
+  },
+  "aggregate_spearman": {
+    "wbia-core vs wbia-develop": {
+      "n_queries": 2,
+      "mean_rho": 0.9758,
+      "min_rho": 0.9636,
+      "max_rho": 0.9879,
+      "std_rho": 0.0121,
+      "all_rho": [
+        0.9636,
+        0.9879
+      ]
+    }
+  },
+  "score_distributions": {
+    "0": {
+      "wbia-core": {
+        "min": 2.7526,
+        "max": 112.4506,
+        "mean": 14.7225,
+        "std": 32.5853,
+        "n": 10
+      },
+      "wbia-develop": {
+        "min": 3.9274,
+        "max": 126.6876,
+        "mean": 17.9313,
+        "std": 36.2683,
+        "n": 10
+      }
+    },
+    "1": {
+      "wbia-core": {
+        "min": 4.5713,
+        "max": 79.4446,
+        "mean": 19.7464,
+        "std": 22.3059,
+        "n": 10
+      },
+      "wbia-develop": {
+        "min": 7.1282,
+        "max": 95.0333,
+        "mean": 26.2193,
+        "std": 26.4692,
+        "n": 10
+      }
+    }
+  },
+  "accuracy": {
+    "per_target": {
+      "wbia-core": {
+        "top1_accuracy": 1.0,
+        "mrr": 1.0,
+        "n_queries": 2,
+        "top3_accuracy": 2.0,
+        "top5_accuracy": 3.0
+      },
+      "wbia-develop": {
+        "top1_accuracy": 1.0,
+        "mrr": 1.0,
+        "n_queries": 2,
+        "top3_accuracy": 2.0,
+        "top5_accuracy": 3.0
+      }
+    },
+    "per_query": [
+      {
+        "query_index": 0,
+        "targets": {
+          "wbia-core": {
+            "top1_correct": true,
+            "mrr": 1.0,
+            "rank": 1
+          },
+          "wbia-develop": {
+            "top1_correct": true,
+            "mrr": 1.0,
+            "rank": 1
+          }
+        }
+      },
+      {
+        "query_index": 1,
+        "targets": {
+          "wbia-core": {
+            "top1_correct": true,
+            "mrr": 1.0,
+            "rank": 1
+          },
+          "wbia-develop": {
+            "top1_correct": true,
+            "mrr": 1.0,
+            "rank": 1
+          }
+        }
+      }
+    ]
+  }
+}

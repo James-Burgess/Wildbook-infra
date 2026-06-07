@@ -1,0 +1,10 @@
+{
+  "target": "wbia-core",
+  "image": "wbia-core:latest",
+  "container_id": "a10578e068ecfa0975adf2ccb3f0051fde4859dfe3a36ec188ca298511e3eabf",
+  "started_at": "2026-06-07T17:52:49Z",
+  "finished_at": "2026-06-07T17:52:53Z",
+  "n_queries": 2,
+  "total_timing_ms": 3228.44,
+  "errors": []
+}

@@ -1,0 +1,129 @@
+[
+  {
+    "annot_id": 3392,
+    "image_id": 2396,
+    "bbox": [
+      1032,
+      809,
+      784,
+      406
+    ],
+    "species": "zebra_plains",
+    "individual_ids": [
+      3392
+    ],
+    "width": 3000,
+    "height": 2000,
+    "is_query": false,
+    "query_index": null
+  },
+  {
+    "annot_id": 3136,
+    "image_id": 2208,
+    "bbox": [
+      1448,
+      1307,
+      432,
+      398
+    ],
+    "species": "zebra_plains",
+    "individual_ids": [
+      5779,
+      5781,
+      5860,
+      5863,
+      3332,
+      3136,
+      3134,
+      3033,
+      3212,
+      3330,
+      3129
+    ],
+    "width": 3000,
+    "height": 1994,
+    "is_query": false,
+    "query_index": null
+  },
+  {
+    "annot_id": 579,
+    "image_id": 510,
+    "bbox": [
+      1628,
+      771,
+      907,
+      432
+    ],
+    "species": "zebra_plains",
+    "individual_ids": [
+      6050,
+      6072,
+      6075,
+      6083,
+      6088,
+      6093,
+      6096,
+      6099,
+      6332,
+      584,
+      655,
+      579,
+      4654,
+      4653,
+      2360,
+      2352,
+      2361,
+      3278
+    ],
+    "width": 3000,
+    "height": 2250,
+    "is_query": true,
+    "query_index": 0
+  },
+  {
+    "annot_id": 5515,
+    "image_id": 3914,
+    "bbox": [
+      1239,
+      196,
+      1309,
+      1180
+    ],
+    "species": "zebra_plains",
+    "individual_ids": [
+      5515
+    ],
+    "width": 3000,
+    "height": 2250,
+    "is_query": false,
+    "query_index": null
+  },
+  {
+    "annot_id": 5878,
+    "image_id": 4187,
+    "bbox": [
+      2359,
+      759,
+      634,
+      497
+    ],
+    "species": "zebra_plains",
+    "individual_ids": [
+      5868,
+      5874,
+      5875,
+      5878,
+      5909,
+      5911,
+      5936,
+      6018,
+      3905,
+      4660,
+      3237
+    ],
+    "width": 3000,
+    "height": 2000,
+    "is_query": true,
+    "query_index": 1
+  }
+]

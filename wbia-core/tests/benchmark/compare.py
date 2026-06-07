@@ -494,6 +494,10 @@ def compare_results(results_dir: str | Path) -> dict:
     summary["aggregate_spearman"] = aggregate_spearman(results_dir)
     summary["score_distributions"] = score_distribution(results_dir)
 
+    # Accuracy metrics (ground-truth individual_ids)
+    accuracy = compute_accuracy(results_dir, target_names)
+    summary["accuracy"] = accuracy
+
     return summary
 
 
@@ -512,6 +516,161 @@ def _aggregate_overlap(results_dir: Path) -> dict[str, float]:
         if vals:
             out[key] = round(sum(vals) / len(vals), 4)
     return out
+
+
+# ---------------------------------------------------------------------------
+# Accuracy metrics (ground-truth individual_ids)
+# ---------------------------------------------------------------------------
+
+
+def _load_ground_truth(
+    results_dir: Path,
+) -> dict[int, list[int]]:
+    """Load annotations.json and build annot_id → individual_ids mapping."""
+    annot_path = results_dir / "annotations.json"
+    if not annot_path.exists():
+        return {}
+    annots = json.loads(annot_path.read_text())
+    return {a["annot_id"]: a.get("individual_ids", []) for a in annots}
+
+
+def _parse_aid(aid: str) -> int | None:
+    if not aid or not aid.startswith("coco-annot-"):
+        return None
+    try:
+        return int(aid.replace("coco-annot-", ""))
+    except (ValueError, TypeError):
+        return None
+
+
+def compute_accuracy(
+    results_dir: str | Path,
+    target_names: list[str] | None = None,
+    k_values: tuple[int, ...] = (1, 3, 5),
+) -> dict[str, Any]:
+    """Compute identification accuracy against ground-truth individual_ids.
+
+    For each query + target, checks whether the top-ranked database annotation
+    shares any ``individual_id`` with the query annotation.  Also computes MRR
+    (Mean Reciprocal Rank) —  1 / rank of the first correct match.
+
+    Returns
+    -------
+    dict with keys:
+        per_target: {target_name: {top1, top3, top5, mrr, n_queries}}
+        per_query: [{query_index, targets: {target_name: {top1_correct, mrr}}}]
+    """
+    results_dir = Path(results_dir)
+    ground_truth = _load_ground_truth(results_dir)
+    if not ground_truth:
+        return {"error": "No ground truth found (annotations.json missing or empty)"}
+
+    if target_names is None:
+        target_dirs = sorted(results_dir.glob("target-*/"))
+        target_names = [d.name[len("target-") :] for d in target_dirs]
+
+    per_query: list[dict] = []
+    per_target: dict[str, dict[str, Any]] = {}
+
+    for name in target_names:
+        per_target[name] = {
+            "n_queries": 0,
+            "n_correct": {k: 0 for k in k_values},
+            "top1_correct": 0,
+            "mrr_sum": 0.0,
+        }
+
+    all_scores = _all_annot_scores(results_dir, target_names)
+
+    for qnum in sorted(all_scores.keys()):
+        if qnum not in all_scores:
+            continue
+        entry: dict[str, Any] = {"query_index": qnum, "targets": {}}
+
+        for name in target_names:
+            scores = all_scores.get(qnum, {}).get(name, [])
+            if not scores:
+                continue
+
+            per_target[name]["n_queries"] += 1
+
+            # Parse the scored aids
+            ranked_aids = [_parse_aid(s["aid"]) for s in scores]
+            ranked_aids = [a for a in ranked_aids if a is not None]
+
+            if not ranked_aids:
+                continue
+
+            # Query's individual_ids — look for the query annotation in ground truth
+            # The query annotation is the one NOT in the database ranking (it's the
+            # seeker), but it should have an entry in annotations.json with is_query=True
+            query_ids: set[int] = set()
+            for annot_id, indiv_ids in ground_truth.items():
+                # The query annotation ID won't appear in the scored aids (it's not
+                # in the database).  Find the query by checking annotations.json
+                # for the first is_query entry matching the query index.
+                pass
+
+            # Rebuild: find query individual_ids from annotations.json
+            annots = (
+                json.loads((results_dir / "annotations.json").read_text())
+                if (results_dir / "annotations.json").exists()
+                else []
+            )
+            query_indiv: list[int] = []
+            for a in annots:
+                if a.get("is_query") and a.get("query_index") == qnum:
+                    query_indiv = a.get("individual_ids", [])
+                    break
+            query_set = set(query_indiv)
+
+            # Check top-k correctness
+            first_correct_rank: int | None = None
+
+            for rank, annot_id in enumerate(ranked_aids, start=1):
+                db_ids = set(ground_truth.get(annot_id, []))
+                is_correct = bool(query_set & db_ids)
+
+                if is_correct:
+                    if first_correct_rank is None:
+                        first_correct_rank = rank
+
+                    for k in k_values:
+                        if rank <= k and name in per_target:
+                            per_target[name]["n_correct"][k] += 1
+
+            mrr = 1.0 / first_correct_rank if first_correct_rank else 0.0
+            per_target[name]["mrr_sum"] += mrr
+
+            if first_correct_rank is not None and first_correct_rank == 1:
+                per_target[name]["top1_correct"] += 1
+
+            entry["targets"][name] = {
+                "top1_correct": first_correct_rank == 1,
+                "mrr": round(mrr, 4),
+                "rank": first_correct_rank,
+            }
+
+        per_query.append(entry)
+
+    # Compute aggregate rates
+    per_target_agg: dict[str, dict] = {}
+    for name, stats in per_target.items():
+        n = stats["n_queries"]
+        per_target_agg[name] = {
+            "top1_accuracy": round(stats["top1_correct"] / n, 4) if n else None,
+            "mrr": round(stats["mrr_sum"] / n, 4) if n else None,
+            "n_queries": n,
+        }
+        for k in k_values:
+            per_target_agg[name][f"top{k}_accuracy"] = (
+                round(stats["n_correct"][k] / n, 4) if n else None
+            )
+
+    return {
+        "per_target": per_target_agg,
+        "per_query": per_query,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -549,6 +708,27 @@ def print_detailed_report(results_dir: str | Path) -> None:
             f"  {pair_key}: mean ρ={stats['mean_rho']:.4f} "
             f"(min={stats['min_rho']:.4f}, max={stats['max_rho']:.4f})"
         )
+
+    # Accuracy
+    acc = summary.get("accuracy", {})
+    if acc.get("per_target"):
+        print("\n--- Identification Accuracy (ground-truth individual_ids) ---")
+        for name, stats in acc["per_target"].items():
+            t1 = stats.get("top1_accuracy")
+            t3 = stats.get("top3_accuracy")
+            t5 = stats.get("top5_accuracy")
+            mrr = stats.get("mrr")
+            n = stats.get("n_queries", 0)
+            parts = []
+            if t1 is not None:
+                parts.append(f"top-1={t1:.1%}")
+            if t3 is not None:
+                parts.append(f"top-3={t3:.1%}")
+            if t5 is not None:
+                parts.append(f"top-5={t5:.1%}")
+            if mrr is not None:
+                parts.append(f"MRR={mrr:.3f}")
+            print(f"  {name}: {', '.join(parts)} (n={n})")
 
     # Top-3 overall overlap
     print("\n--- Mean Top-3 Overlap ---")

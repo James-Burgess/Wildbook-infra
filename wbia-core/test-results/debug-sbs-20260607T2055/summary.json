@@ -1,0 +1,184 @@
+{
+  "run_id": "debug-sbs-20260607T2055",
+  "config": {
+    "n_annots": 15,
+    "n_queries": 2,
+    "species": null,
+    "seed": 10,
+    "pipeline_root": "vsmany",
+    "K": 4,
+    "Knorm": 1,
+    "Kpad": 0,
+    "kpad_policy": "fixed",
+    "score_method": "nsum",
+    "normalizer_rule": "last",
+    "fg_on": false,
+    "bar_l2_on": false,
+    "sv_on": false,
+    "flann_algorithm": "kdtree"
+  },
+  "targets": [
+    "wbia-core",
+    "wbia-develop"
+  ],
+  "agreement": {
+    "top1_identical": true,
+    "all_rankings_match": true,
+    "max_score_delta": 0.0,
+    "spearman_below_pairs": []
+  },
+  "per_query": [
+    {
+      "query_index": 0,
+      "top1_aids": {
+        "wbia-core": "coco-annot-433",
+        "wbia-develop": null
+      },
+      "max_score_delta": 0.0,
+      "spearman_pairs": [],
+      "top3_overlap": {},
+      "score_stats": {}
+    },
+    {
+      "query_index": 1,
+      "top1_aids": {
+        "wbia-core": "coco-annot-2753",
+        "wbia-develop": null
+      },
+      "max_score_delta": 0.0,
+      "spearman_pairs": [],
+      "top3_overlap": {},
+      "score_stats": {}
+    }
+  ],
+  "errors": [],
+  "top_k_aids": {
+    "0": {
+      "wbia-core": [
+        {
+          "aid": "coco-annot-433",
+          "score": 97.0797
+        },
+        {
+          "aid": "coco-annot-2752",
+          "score": 20.699
+        },
+        {
+          "aid": "coco-annot-5950",
+          "score": 4.4854
+        },
+        {
+          "aid": "coco-annot-3179",
+          "score": 3.636
+        },
+        {
+          "aid": "coco-annot-5932",
+          "score": 3.5724
+        }
+      ],
+      "wbia-develop": []
+    },
+    "1": {
+      "wbia-core": [
+        {
+          "aid": "coco-annot-2753",
+          "score": 115.779
+        },
+        {
+          "aid": "coco-annot-5932",
+          "score": 9.3801
+        },
+        {
+          "aid": "coco-annot-433",
+          "score": 8.0142
+        },
+        {
+          "aid": "coco-annot-5950",
+          "score": 6.7359
+        },
+        {
+          "aid": "coco-annot-3179",
+          "score": 6.0365
+        }
+      ],
+      "wbia-develop": []
+    }
+  },
+  "top3_overall_overlap": {
+    "wbia-core -> wbia-develop": 0.0,
+    "wbia-develop -> wbia-core": 0.0
+  },
+  "aggregate_spearman": {},
+  "score_distributions": {
+    "0": {
+      "wbia-core": {
+        "min": 1.569,
+        "max": 97.0797,
+        "mean": 21.8403,
+        "std": 34.2527,
+        "n": 6
+      },
+      "wbia-develop": {
+        "min": null,
+        "max": null,
+        "mean": null,
+        "std": null
+      }
+    },
+    "1": {
+      "wbia-core": {
+        "min": 3.0314,
+        "max": 115.779,
+        "mean": 24.8295,
+        "std": 40.7205,
+        "n": 6
+      },
+      "wbia-develop": {
+        "min": null,
+        "max": null,
+        "mean": null,
+        "std": null
+      }
+    }
+  },
+  "accuracy": {
+    "per_target": {
+      "wbia-core": {
+        "top1_accuracy": 1.0,
+        "mrr": 1.0,
+        "n_queries": 2,
+        "top3_accuracy": 1.0,
+        "top5_accuracy": 1.0
+      },
+      "wbia-develop": {
+        "top1_accuracy": null,
+        "mrr": null,
+        "n_queries": 0,
+        "top3_accuracy": null,
+        "top5_accuracy": null
+      }
+    },
+    "per_query": [
+      {
+        "query_index": 0,
+        "targets": {
+          "wbia-core": {
+            "top1_correct": true,
+            "mrr": 1.0,
+            "rank": 1
+          }
+        }
+      },
+      {
+        "query_index": 1,
+        "targets": {
+          "wbia-core": {
+            "top1_correct": true,
+            "mrr": 1.0,
+            "rank": 1
+          }
+        }
+      }
+    ]
+  }
+}

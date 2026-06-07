@@ -21,13 +21,33 @@ class HotSpotterConfig(BaseModel):
     kpad: int = Field(
         default=0, ge=0, description="Extra K columns for self-filtering buffer"
     )
-    score_method: Literal["nsum", "csum"] = Field(default="csum")
-    prescore_method: Literal["nsum", "csum"] = Field(default="csum")
+    kpad_policy: Literal["fixed", "dynamic"] = Field(
+        default="fixed",
+        description="'fixed' uses kpad value; 'dynamic' computes from impossible annots",
+    )
+    score_method: Literal["csum", "nsum", "csum_wbia", "nsum_wbia", "sumamech"] = Field(
+        default="csum",
+        description=(
+            "Simple: 'csum' (per-annot sum), 'nsum' (per-annot avg). "
+            "WBIA: 'nsum_wbia' (fmech), 'csum_wbia' (max-per-name), 'sumamech'"
+        ),
+    )
+    prescore_method: Literal["csum", "nsum", "csum_wbia", "nsum_wbia", "sumamech"] = (
+        Field(default="csum")
+    )
+    normalizer_rule: Literal["last", "name"] = Field(
+        default="last",
+        description="'last' uses farthest neighbour; 'name' picks from different name ID",
+    )
     sv_on: bool = Field(default=True, description="Enable spatial verification")
     num_return: int = Field(default=10, ge=1)
     ratio_thresh: Optional[float] = Field(default=None, gt=0.0)
     lnbnn_ratio: float = Field(default=1.0, gt=0.0)
     fg_on: bool = Field(default=True)
+
+    # Additional WBIA filters (defaults match WBIA)
+    bar_l2_on: bool = Field(default=False)
+    const_on: bool = Field(default=False)
 
     # FLANN index parameters (matching WBIA defaults)
     flann_algorithm: str = Field(default="kdtree")

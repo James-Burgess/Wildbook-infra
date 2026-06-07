@@ -1,0 +1,12 @@
+{
+  "target": "wbia-develop",
+  "image": "wildme/wbia:develop",
+  "container_id": null,
+  "started_at": "2026-06-07T19:05:33Z",
+  "finished_at": null,
+  "n_queries": 5,
+  "total_timing_ms": 0,
+  "errors": [
+    "Failed to start: Command '['docker', 'run', '-d', '--name', 'wbia-develop-3f379b63', '-p', '5001:5000', '-v', 'wbia-data-wbia-develop-3f379b63:/data/db', '-v', '/home/jimmy/projects/James-Burgess/Wildbook-infra/wbia-core/tests/replay/patch_wbia_schema.py:/patch_wbia_schema.py:ro', '-v', '/home/jimmy/projects/James-Burgess/Wildbook-infra/wbia-core/test-results/debug-sbs-20260607T190113/debug-logs/wbia_develop.log:/app/debug.log', '-e', 'WBIA_DEBUG=1', '-e', 'WBIA_DEBUG_FILE=/app/debug.log', '-v', '/home/jimmy/projects/James-Burgess/Wildbook-infra/wildbook-ia/wbia/algo/hots/debug_log.py:/virtualenv/env3/lib/python3.10/site-packages/wbia/algo/hots/debug_log.py:ro', '-v', '/home/jimmy/projects/James-Burgess/Wildbook-infra/wildbook-ia/wbia/algo/hots/pipeline.py:/virtualenv/env3/lib/python3.10/site-packages/wbia/algo/hots/pipeline.py:ro', '--add-host', 'host.docker.internal:host-gateway', '-e', 'EXEC_PRIVILEGED=true', '--entrypoint', '/bin/sh', 'wildme/wbia:develop', '-c', \"/bin/sh -c '/virtualenv/env3/bin/python /patch_wbia_schema.py && exec /bin/entrypoint /virtualenv/env3/bin/python -m wbia.dev --dbdir /data/db --logdir /data/db/logs --web --containerized --production'\"]' timed out after 120 seconds"
+  ]
+}

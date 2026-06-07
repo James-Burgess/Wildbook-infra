@@ -24,11 +24,15 @@ class CoreTargetRunner(TargetRunner):
         image = self.config.image
         name = self._container_name
 
+        cmd = ["docker", "run", "-d", "--name", name, "-p", f"{port}:5000"]
+        cmd.extend(["-e", "WBIA_CORE_DEBUG=1"])
+        cmd.append(image)
+
         result = subprocess.run(
-            ["docker", "run", "-d", "--name", name, "-p", f"{port}:5000", image],
+            cmd,
             capture_output=True,
             text=True,
-            timeout=120,
+            timeout=500,
         )
         if result.returncode != 0:
             raise RuntimeError(
@@ -37,7 +41,7 @@ class CoreTargetRunner(TargetRunner):
 
         self._container_id = result.stdout.strip()
 
-        deadline = time.monotonic() + 120
+        deadline = time.monotonic() + 500
         while time.monotonic() < deadline:
             try:
                 req = urllib.request.Request(f"http://localhost:{port}/api/health/")
@@ -50,7 +54,7 @@ class CoreTargetRunner(TargetRunner):
             time.sleep(2)
         else:
             self.stop()
-            raise TimeoutError(f"Container {name} not healthy after 120s")
+            raise TimeoutError(f"Container {name} not healthy after 500s")
 
         return {
             "target": self.config.name,
@@ -109,3 +113,16 @@ class CoreTargetRunner(TargetRunner):
             capture_output=True,
             timeout=60,
         )
+
+    def capture_logs(self, log_file: str) -> None:
+        """Save container logs (combined stdout+stderr) to *log_file* before stopping."""
+        name = self._container_name
+        result = subprocess.run(
+            ["docker", "logs", name],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if result.returncode == 0:
+            combined = (result.stdout or "") + (result.stderr or "")
+            Path(log_file).write_text(combined)

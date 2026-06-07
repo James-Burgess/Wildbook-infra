@@ -12,6 +12,8 @@ class TargetConfig:
     image: str
     port: int
     keep_containers: bool = False
+    debug_logs_dir: str | None = None
+    debug_log_file: str | None = None
 
 
 @dataclass

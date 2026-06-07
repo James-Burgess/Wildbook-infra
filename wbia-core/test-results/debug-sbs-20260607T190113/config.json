@@ -1,0 +1,13 @@
+{
+  "n_annots": 29,
+  "n_queries": 5,
+  "species": null,
+  "seed": 10,
+  "pipeline_root": "vsmany",
+  "K": 4,
+  "Knorm": 1,
+  "Kpad": 0,
+  "fg_on": false,
+  "sv_on": false,
+  "flann_algorithm": "kdtree"
+}

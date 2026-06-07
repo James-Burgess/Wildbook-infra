@@ -1,0 +1,77 @@
+{
+  "query_index": 2,
+  "error": null,
+  "response": {
+    "annot_scores": [
+      {
+        "aid": "coco-annot-2753",
+        "num_matches": 987,
+        "score": 115.77896
+      },
+      {
+        "aid": "coco-annot-5932",
+        "num_matches": 600,
+        "score": 9.380109
+      },
+      {
+        "aid": "coco-annot-433",
+        "num_matches": 287,
+        "score": 8.014231
+      },
+      {
+        "aid": "coco-annot-5950",
+        "num_matches": 420,
+        "score": 6.735935
+      },
+      {
+        "aid": "coco-annot-3179",
+        "num_matches": 355,
+        "score": 6.03647
+      },
+      {
+        "aid": "coco-annot-1651",
+        "num_matches": 146,
+        "score": 3.031353
+      }
+    ],
+    "timing_ms": 1160.9
+  },
+  "raw_response": {
+    "response": {
+      "annot_scores": [
+        {
+          "aid": "coco-annot-2753",
+          "num_matches": 987,
+          "score": 115.77896
+        },
+        {
+          "aid": "coco-annot-5932",
+          "num_matches": 600,
+          "score": 9.380109
+        },
+        {
+          "aid": "coco-annot-433",
+          "num_matches": 287,
+          "score": 8.014231
+        },
+        {
+          "aid": "coco-annot-5950",
+          "num_matches": 420,
+          "score": 6.735935
+        },
+        {
+          "aid": "coco-annot-3179",
+          "num_matches": 355,
+          "score": 6.03647
+        },
+        {
+          "aid": "coco-annot-1651",
+          "num_matches": 146,
+          "score": 3.031353
+        }
+      ],
+      "timing_ms": 1160.9
+    },
+    "status": "completed"
+  }
+}

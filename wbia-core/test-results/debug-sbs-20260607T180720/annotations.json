@@ -1,0 +1,274 @@
+[
+  {
+    "annot_id": 2716,
+    "image_id": 1903,
+    "bbox": [
+      535,
+      616,
+      2005,
+      921
+    ],
+    "species": "zebra_plains",
+    "individual_ids": [
+      2716,
+      2708
+    ],
+    "width": 3000,
+    "height": 2250,
+    "is_query": true,
+    "query_index": 0
+  },
+  {
+    "annot_id": 2708,
+    "image_id": 1896,
+    "bbox": [
+      711,
+      436,
+      1478,
+      985
+    ],
+    "species": "zebra_plains",
+    "individual_ids": [
+      2716,
+      2708
+    ],
+    "width": 3000,
+    "height": 2250,
+    "is_query": false,
+    "query_index": null
+  },
+  {
+    "annot_id": 2003,
+    "image_id": 1349,
+    "bbox": [
+      393,
+      937,
+      578,
+      367
+    ],
+    "species": "zebra_plains",
+    "individual_ids": [
+      377,
+      1410,
+      1413,
+      2000,
+      2003,
+      1063,
+      1407,
+      1067,
+      2301
+    ],
+    "width": 3000,
+    "height": 1987,
+    "is_query": true,
+    "query_index": 1
+  },
+  {
+    "annot_id": 1063,
+    "image_id": 765,
+    "bbox": [
+      2181,
+      967,
+      560,
+      307
+    ],
+    "species": "zebra_plains",
+    "individual_ids": [
+      377,
+      1410,
+      1413,
+      2000,
+      2003,
+      1063,
+      1407,
+      1067,
+      2301
+    ],
+    "width": 3000,
+    "height": 2000,
+    "is_query": false,
+    "query_index": null
+  },
+  {
+    "annot_id": 377,
+    "image_id": 349,
+    "bbox": [
+      762,
+      522,
+      1654,
+      1187
+    ],
+    "species": "zebra_plains",
+    "individual_ids": [
+      377,
+      1410,
+      1413,
+      2000,
+      2003,
+      1063,
+      1407,
+      1067,
+      2301
+    ],
+    "width": 3000,
+    "height": 2000,
+    "is_query": false,
+    "query_index": null
+  },
+  {
+    "annot_id": 1407,
+    "image_id": 996,
+    "bbox": [
+      1589,
+      676,
+      625,
+      402
+    ],
+    "species": "zebra_plains",
+    "individual_ids": [
+      377,
+      1410,
+      1413,
+      2000,
+      2003,
+      1063,
+      1407,
+      1067,
+      2301
+    ],
+    "width": 3000,
+    "height": 2000,
+    "is_query": false,
+    "query_index": null
+  },
+  {
+    "annot_id": 2301,
+    "image_id": 1580,
+    "bbox": [
+      1294,
+      1097,
+      467,
+      377
+    ],
+    "species": "zebra_plains",
+    "individual_ids": [
+      377,
+      1410,
+      1413,
+      2000,
+      2003,
+      1063,
+      1407,
+      1067,
+      2301
+    ],
+    "width": 3000,
+    "height": 2000,
+    "is_query": false,
+    "query_index": null
+  },
+  {
+    "annot_id": 1413,
+    "image_id": 998,
+    "bbox": [
+      295,
+      818,
+      659,
+      462
+    ],
+    "species": "zebra_plains",
+    "individual_ids": [
+      377,
+      1410,
+      1413,
+      2000,
+      2003,
+      1063,
+      1407,
+      1067,
+      2301
+    ],
+    "width": 3000,
+    "height": 2000,
+    "is_query": false,
+    "query_index": null
+  },
+  {
+    "annot_id": 2000,
+    "image_id": 1348,
+    "bbox": [
+      1752,
+      937,
+      599,
+      372
+    ],
+    "species": "zebra_plains",
+    "individual_ids": [
+      377,
+      1410,
+      1413,
+      2000,
+      2003,
+      1063,
+      1407,
+      1067,
+      2301
+    ],
+    "width": 3000,
+    "height": 1987,
+    "is_query": false,
+    "query_index": null
+  },
+  {
+    "annot_id": 1410,
+    "image_id": 997,
+    "bbox": [
+      1323,
+      736,
+      569,
+      526
+    ],
+    "species": "zebra_plains",
+    "individual_ids": [
+      377,
+      1410,
+      1413,
+      2000,
+      2003,
+      1063,
+      1407,
+      1067,
+      2301
+    ],
+    "width": 3000,
+    "height": 2000,
+    "is_query": false,
+    "query_index": null
+  },
+  {
+    "annot_id": 1067,
+    "image_id": 766,
+    "bbox": [
+      1121,
+      848,
+      539,
+      303
+    ],
+    "species": "zebra_plains",
+    "individual_ids": [
+      377,
+      1410,
+      1413,
+      2000,
+      2003,
+      1063,
+      1407,
+      1067,
+      2301
+    ],
+    "width": 3000,
+    "height": 2000,
+    "is_query": false,
+    "query_index": null
+  }
+]

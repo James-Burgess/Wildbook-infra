@@ -5,13 +5,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import shutil
 import sys
 import time
 from pathlib import Path
 
 from coco.loader import CocoLoader
-from compare import compare_results
+from compare import compare_results, print_detailed_report
 from runner import run_benchmark
 from targets.base import TargetConfig
 from targets.core import CoreTargetRunner
@@ -19,6 +18,7 @@ from targets.wbia import WbiaTargetRunner
 
 TARGET_MAP = {
     "wbia-core": (CoreTargetRunner, "wbia-core:latest"),
+    "wbia-slim": (CoreTargetRunner, "wbia-slim:latest"),
     "wbia-latest": (WbiaTargetRunner, "wildme/wbia:latest"),
     "wbia-nightly": (WbiaTargetRunner, "wildme/wbia:nightly"),
     "wbia-develop": (WbiaTargetRunner, "wildme/wbia:develop"),
@@ -29,7 +29,11 @@ DEFAULT_CONFIG = {
     "K": 4,
     "Knorm": 1,
     "Kpad": 0,
+    "kpad_policy": "fixed",
+    "score_method": "nsum",
+    "normalizer_rule": "last",
     "fg_on": False,
+    "bar_l2_on": False,
     "sv_on": False,
 }
 
@@ -112,13 +116,6 @@ def main():
         help="Don't stop containers after run",
     )
     parser.add_argument(
-        "--reference",
-        type=str,
-        default=None,
-        metavar="DIR",
-        help="Path to reference WBIA results directory (skips live WBIA — fast)",
-    )
-    parser.add_argument(
         "--flann-algorithm",
         type=str,
         default="kdtree",
@@ -137,10 +134,6 @@ def main():
         n_queries=args.n_queries,
     )
 
-    # Reference mode: only run wbia-core, inject stored WBIA results
-    if args.reference:
-        args.targets = ["wbia-core"]
-
     # Build targets
     targets = _build_targets(
         args.targets,
@@ -158,13 +151,16 @@ def main():
         ts = time.strftime("%Y%m%dT%H%M%S")
         results_dir = Path(f"test-run-results-{ts}")
 
-    # Inject reference if requested
-    if args.reference:
-        ref_src = Path(args.reference)
-        ref_dst = results_dir / "target-reference"
-        ref_dst.mkdir(parents=True, exist_ok=True)
-        shutil.copytree(ref_src, ref_dst, dirs_exist_ok=True)
-        print(f"Reference injected: {ref_src} → {ref_dst}")
+    # Collect CLI args for metadata
+    cli_args = {
+        "n_annots": args.n_annots,
+        "n_queries": args.n_queries,
+        "species": args.species,
+        "seed": args.seed,
+        "targets": args.targets,
+        "flann_algorithm": args.flann_algorithm,
+        "results_dir": str(results_dir),
+    }
 
     # Run
     print(
@@ -172,39 +168,23 @@ def main():
         f"{len(subset.query_indices)} queries → {results_dir}"
     )
     run_config = {**DEFAULT_CONFIG, "flann_algorithm": args.flann_algorithm}
-    aggregate = run_benchmark(subset, targets, results_dir, run_config)
+    aggregate = run_benchmark(
+        subset, targets, results_dir, run_config, cli_args=cli_args
+    )
 
-    # Compare
+    # Debug logs are captured directly into results_dir/debug-logs/ by the targets
+    debug_logs_dir = results_dir / "debug-logs"
+    if debug_logs_dir.exists():
+        for f in sorted(debug_logs_dir.iterdir()):
+            print(f"Debug log: {f} ({f.stat().st_size:,} bytes)")
+
+    # Write summary and print detailed report
     summary = compare_results(results_dir)
-
-    # Write summary
     summary_path = results_dir / "summary.json"
     summary_path.write_text(json.dumps(summary, indent=2))
     print(f"Summary → {summary_path}")
-
-    # Print summary
-    agreement = summary.get("agreement", {})
     print()
-    print("=== Results ===")
-    print(f"  top1_identical:      {agreement.get('top1_identical')}")
-    print(f"  all_rankings_match:  {agreement.get('all_rankings_match')}")
-    print(f"  max_score_delta:     {agreement.get('max_score_delta'):.6f}")
-    print(f"  spearman_below_pairs: {len(agreement.get('spearman_below_pairs', []))}")
-    errors = summary.get("errors", [])
-    print(f"  errors:              {len(errors)}")
-    if errors:
-        for e in errors:
-            print(f"    [{e['target']}] query {e['query_index']}: {e['message']}")
-
-    for name in summary.get("targets", []):
-        manifest_path = results_dir / f"target-{name}" / "manifest.json"
-        if manifest_path.exists():
-            m = json.loads(manifest_path.read_text())
-            print(f"\n  target {name}:")
-            print(f"    queries:      {m.get('n_queries', 0)}")
-            print(f"    total_timing: {m.get('total_timing_ms', 0):.0f} ms")
-            if m.get("errors"):
-                print(f"    errors:       {len(m['errors'])}")
+    print_detailed_report(results_dir)
 
 
 if __name__ == "__main__":

@@ -7,6 +7,8 @@ import cv2
 import numpy as np
 from flask import Flask, jsonify, request
 
+from typing import Any, Literal, cast
+
 from wbia_core.config import HotSpotterConfig, IdentificationConfig, SiftConfig
 from wbia_core.data import AnnotatedImage, FeatureSet
 from wbia_core.features import extract_features
@@ -162,6 +164,8 @@ def _run_identify(body: dict) -> dict:
         raw = entry.get("name_uuid")
         if raw is not None:
             name_uuid = uuid.UUID(raw)
+        else:
+            name_uuid = annot_uuid
 
         db_annots.append(
             AnnotatedImage(
@@ -173,10 +177,28 @@ def _run_identify(body: dict) -> dict:
             )
         )
 
+    _score_map: dict[str, Any] = {
+        "nsum": "nsum_wbia",
+        "csum": "csum_wbia",
+        "sumamech": "sumamech",
+    }
+    score_method_raw: str = str(cfg.get("score_method", "nsum"))
+    score_method = cast(
+        Literal["csum", "nsum", "csum_wbia", "nsum_wbia", "sumamech"],
+        _score_map.get(score_method_raw, "csum"),
+    )
+
     hs_config = HotSpotterConfig(
         knn=cfg.get("K", 4),
         kpad=cfg.get("Kpad", 0),
+        kpad_policy=cfg.get("kpad_policy", "fixed"),
+        score_method=score_method,
+        normalizer_rule=cast(
+            Literal["last", "name"], cfg.get("normalizer_rule", "last")
+        ),
         fg_on=cfg.get("fg_on", False),
+        bar_l2_on=cfg.get("bar_l2_on", False),
+        const_on=cfg.get("const_on", False),
         sv_on=cfg.get("sv_on", False),
         num_return=len(database_entries),
         flann_algorithm=cfg.get("flann_algorithm", "kdtree"),
@@ -203,3 +225,7 @@ def _run_identify(body: dict) -> dict:
     timing_ms = round((time.perf_counter() - t0) * 1000, 2)
 
     return {"annot_scores": annot_scores, "timing_ms": timing_ms}
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)

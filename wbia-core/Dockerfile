@@ -45,7 +45,7 @@ RUN cd wbia-tpl-pyhesaff \
     && pip3 install --no-cache-dir --no-deps -e . \
     && cd ..
 
-RUN pip3 install --no-cache-dir . flask gunicorn
+RUN pip3 install --no-cache-dir . flask
 
 ENV LD_LIBRARY_PATH /virtualenv/env3/lib:${LD_LIBRARY_PATH}
 

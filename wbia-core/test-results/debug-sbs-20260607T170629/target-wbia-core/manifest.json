@@ -1,0 +1,12 @@
+{
+  "target": "wbia-core",
+  "image": "wbia-core:latest",
+  "container_id": null,
+  "started_at": "2026-06-07T17:06:32Z",
+  "finished_at": null,
+  "n_queries": 2,
+  "total_timing_ms": 0,
+  "errors": [
+    "Failed to start: Failed to start container wbia-core-e86bd5d7: docker: Error response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint wbia-core-e86bd5d7 (86cf86dfe7bb0f422cf29357c6843af51f0ed438fe38fc2d979992ce6145d1a6): Bind for 0.0.0.0:5000 failed: port is already allocated\n\nRun 'docker run --help' for more information"
+  ]
+}

@@ -5,6 +5,77 @@ package evolves.  It complements the formal ADRs in `decisions/`.
 
 ---
 
+## 2026-06-07 — Phase 1 parity: Kpad dynamic, name-level scoring (nsum), canonical alignment
+
+### Run 184326 baseline (15 annots, 2 queries, seed=10)
+
+Before changes, wbia-core vs wbia-develop at minimal config
+(K=4, Knorm=1, fg_on=False, sv_on=False, norm_rule=last):
+- ρ = 0.987, top-1 = 100%, top-3 = 100%
+- Score ratio ~0.8× (wbia-core / WBIA)
+
+Structural differences remaining:
+1. **Kpad fixed at 0** — WBIA uses dynamic Kpad when query is in database
+2. **No name-level fmech scoring** — WBIA default score_method='nsum'
+3. **No canonical name score alignment** — best annot per name gets the name score
+
+See `docs/development/parity-roadmap.md` for the full plan.
+
+### Changes made
+
+**1a. Kpad dynamic** (`config.py`, `pipeline.py`):
+- Added `kpad_policy: Literal["fixed","dynamic"]` to `HotSpotterConfig`
+- In `identify()`: when `kpad_policy='dynamic'`, compute Kpad from the count of
+  impossible annotations (self + same-name). When `'fixed'`, use config value.
+- Kpad is now computed per-query at runtime instead of hardcoded.
+
+**1b. Name-level scoring** (new `name_scoring.py`):
+- `compute_fmech_score(matches, name_groupxs)` — WBIA's nsum/fmech algorithm.
+  Groups feature matches by name, then by query feature index (qfx). Within
+  each (name, qfx) group, takes the max-scoring match only, then sums the
+  survivors. This prevents double-counting when multiple annots of the same
+  name match the same query feature.
+- `align_name_scores_with_annots(...)` — canonical name score alignment.
+  For each name, finds the single annotation with the highest csum score
+  and assigns the name-level score to it. Other annots get -inf.
+
+**1c. Scoring dispatch** (`scoring.py`, `pipeline.py`):
+- `score_method='csum'` (old): per-annot csum only
+- `score_method='nsum'` (new): per-annot csum → fmech name → canonical
+- `score_method='csum_wbia'` (new): per-annot csum → max-per-name → canonical
+- `score_method='sumamech'` (new): per-annot csum → sum-per-name → canonical
+- Pipeline now dispatches to `score_matches_with_names()` for WBIA-style methods.
+
+### Verification
+
+```bash
+cd wbia-core
+
+# Unit tests (Docker required)
+make test-unit
+
+# Benchmark with WBIA scoring methods (from host)
+python3 tests/benchmark/run_benchmark.py \
+  --targets wbia-core wbia-develop \
+  --n-annots 15 --n-queries 2 \
+  --seed 10 --results-dir test-results/debug-sbs-$(date +%Y%m%dT%H%M%S)
+```
+
+### Benchmark config (now defaults to WBIA `nsum` / fmech scoring)
+
+The benchmark `DEFAULT_CONFIG` now includes:
+- `score_method: "nsum"` (WBIA default fmech path)
+- `kpad_policy: "fixed"` (set to "dynamic" for WBIA-compatible Kpad)
+- `normalizer_rule: "last"` (set to "name" for Phase 2)
+- `bar_l2_on: False`
+
+The sidecar maps bench config keys to internal `HotSpotterConfig`:
+- `"nsum"` → `"nsum_wbia"` (fmech)
+- `"csum"` → `"csum_wbia"` (max-per-name)
+- `"sumamech"` → `"sumamech"`
+
+---
+
 ## 2026-06-06c — Chip extraction + distance normalization fixes
 
 ### Root cause: missing chip extraction
