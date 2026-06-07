@@ -20,6 +20,17 @@ from wbia_core.data import AnnotatedImage, FeatureSet, Match, ScoredMatch
 from wbia_core.knn import build_global_index, exact_knn, query_index
 from wbia_core.scoring import per_feature_fg, score_matches
 from wbia_core.spatial import spatial_verify
+from wbia_core.debug_log import (
+    stage_dist_norm,
+    stage_features,
+    stage_filter_counts,
+    stage_final,
+    stage_global_index,
+    stage_lnbnn_weights,
+    stage_match_to_annot,
+    stage_raw_dists,
+    stage_voting_cols,
+)
 
 
 def identify(
@@ -57,11 +68,11 @@ def identify(
     k_total = k + kpad + knorm  # e.g. 4 + 1 + 1 = 6
 
     # ---- 1. Build global FLANN index over ALL annotations ----
-    # WBIA uses daid_list order → same order as database list
+    stage_features(database)
+
     all_features = [ann.features for ann in database]
 
     if hs.flann_algorithm == "exact":
-        # Exact N-N: concatenate all descriptors, use numpy dot product
         import numpy as _np
 
         all_descs = _np.concatenate([fs.descriptors for fs in all_features], axis=0)
@@ -97,32 +108,37 @@ def identify(
             cores=hs.flann_cores,
         )
 
-    # Post-hoc distance normalisation (WBIA VEC_PSEUDO_MAX_DISTANCE_SQRD)
-    # WBIA divides raw SSE by 524288, then takes sqrt (sqrd_dist_on=False default).
+    stage_global_index(all_features, annot_of_desc)
+    stage_raw_dists(raw_dists, raw_labels)
+
+    # Post-hoc distance normalisation
     max_distance_sqrd = 2.0 * (512.0**2.0)
     dists = (np.maximum(raw_dists, 0.0) / max_distance_sqrd).astype(np.float64)
     dists = np.sqrt(dists)
-    labels = raw_labels.astype(np.int64)
+    labels_normalised = raw_labels.astype(np.int64)
+
+    stage_dist_norm(dists)
 
     n_qfxs = dists.shape[0]
 
-    # First K+Kpad columns = voting candidates; last column = LNBNN normaliser
-    voting_dists_all = dists[:, : k + kpad]  # [M, K+Kpad]
-    norm_dists = dists[:, -1:]  # [M, 1]
+    # First K+Kpad columns = voting candidates; last column = normaliser
+    voting_dists_all = dists[:, : k + kpad]
+    norm_dists = dists[:, -1:]
 
-    # Map every neighbour column back to (annot_idx, feat_idx) in the
-    # *original* database order (annot_of_desc already uses that order).
+    # Map neighbour columns back to (annot_idx, feat_idx)
     voting_annot_all = np.full((n_qfxs, k + kpad), -1, dtype=np.int32)
     voting_feat_all = np.full((n_qfxs, k + kpad), -1, dtype=np.int32)
     for j in range(k + kpad):
-        col = labels[:, j]
+        col = labels_normalised[:, j]
         valid = (col >= 0) & (col < n_total)
         voting_annot_all[valid, j] = annot_of_desc[col[valid]]
         voting_feat_all[valid, j] = feat_of_desc[col[valid]]
 
-    # ---- 3. Baseline-neighbour filter (self + same-name) ----
-    # Like WBIA's baseline_neighbor_filter: only the first K+Kpad columns
-    # are checked; the normaliser column is NOT filtered.
+    stage_voting_cols(
+        dists, labels_normalised, annot_of_desc, k, kpad, query_annot_index
+    )
+
+    # ---- 3. Baseline-neighbour filter ----
     qname = database[query_annot_index].name_uuid
     if qname is not None:
         same_name_set = {
@@ -135,7 +151,17 @@ def identify(
 
     invalid = (voting_annot_all == query_annot_index) | np.isin(
         voting_annot_all, list(same_name_set)
-    )  # [M, K+Kpad], bool
+    )
+
+    stage_filter_counts(
+        dists,
+        labels_normalised,
+        annot_of_desc,
+        k,
+        kpad,
+        query_annot_index,
+        same_name_set,
+    )
 
     # ---- 4. FG weights ----
     if hs.fg_on:
@@ -145,11 +171,9 @@ def identify(
         fg_weights = None
         q_fgw = None
 
-    # ---- 5. WBIA filter chain → flat match list ----
-    # WBIA multiplies ALL active filter columns:
-    #   weight = lnbnn * bar_l2 * (const) * (fg) * (ratio)
-    # bar_l2 = 1 - vdist  is always ON in WBIA's pipeline.
+    # ---- 5. LNBNN weights → flat match list ----
     matches: list[Match] = []
+    lnbnn_weights: list[float] = []
     for qfx in range(n_qfxs):
         for j in range(k + kpad):
             w = float(norm_dists[qfx, 0]) - float(voting_dists_all[qfx, j])
@@ -163,6 +187,7 @@ def identify(
             if hs.fg_on and q_fgw is not None:
                 w *= np.sqrt(float(q_fgw[qfx]) * float(fg_weights[db_idx][dfx]))
 
+            lnbnn_weights.append(w)
             matches.append(
                 Match(
                     qfx=qfx,
@@ -173,8 +198,17 @@ def identify(
                 )
             )
 
+    stage_lnbnn_weights(lnbnn_weights)
+
     # ---- 6. Score ----
     scored = score_matches(matches, database, hs.score_method)
+
+    annot_to_matches: dict[object, tuple[float, int]] = {}
+    for m in matches:
+        auuid = database[m.daid].annot_uuid
+        s, cnt = annot_to_matches.get(auuid, (0.0, 0))
+        annot_to_matches[auuid] = (s + m.dist, cnt + 1)
+    stage_match_to_annot(annot_to_matches)
 
     # ---- 7. Spatial verification ----
     if hs.sv_on:
@@ -183,4 +217,6 @@ def identify(
     if hs.sv_on and hs.prescore_method != hs.score_method:
         scored = score_matches(matches, database, hs.score_method)
 
-    return scored[: hs.num_return]
+    result = scored[: hs.num_return]
+    stage_final(result)
+    return result

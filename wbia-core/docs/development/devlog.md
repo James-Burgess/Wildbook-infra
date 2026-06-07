@@ -1030,4 +1030,114 @@ Same results as before OpenCV pin — switching to the pip wheel didn't change p
 - Option A: Re-record WBIA reference with `docker pull wildme/wbia:latest`
 - Option B: Build pyhesaff from the exact same source as WBIA's provision image
 - Option C: Extract features from WBIA directly, store as fixtures for scoring-only tests
+
+---
+
+## 2026-06-07c — .so file hash comparison: pyhesaff ruled out
+
+### Methodology
+
+Compared MD5 and SHA256 hashes of `libhesaff.so` and `libsver.so` between
+`wbia-core:latest` and `wildme/wbia:latest` Docker images.
+
+### Results
+
+| Binary | wbia-core md5 | WBIA md5 | Match? |
+|---|---|---|---|
+| `libhesaff.so` | `3b276f86...` | `3b276f86...` | ✓ bit-identical |
+| `libsver.so` | `ffc50514...` | `ffc50514...` | ✓ bit-identical |
+
+Both SHA256 hashes also match. The version strings differ
+(`4.0.0` vs `4.0.1.dev45`, `4.0.0` vs `4.0.3.dev22`) — but these are just
+SONAME metadata from `setuptools_scm`. The actual compiled binaries are
+byte-for-byte identical.
+
+### Impact
+
+**Pyhesaff build differences are ruled out.** The SIFT keypoints and descriptors
+produced by both images are identical given the same input chip. The remaining
+parity gap (ρ=0.33 mean, 1.6× score ratio) cannot be in the feature extraction
+layer.
+
+### Ruled-out theories (cumulative)
+
+| Theory | Status | Evidence |
+|---|---|---|
+| FLANN KD-tree non-determinism | ✗ | Exact search = same results |
+| Missing FG weights | ✗ | `fg_on=False` in both |
+| Score normalization formula | ✗ | Verified `raw/524288`, no sqrt |
+| Chip dimensions | ✗ | 700/maxwh matches WBIA |
+| Chip extraction method | ✗ | warpAffine matches WBIA |
+| OpenCV version | ✗ | Both use 4.7.0.72 pip wheel |
+| Docker base image | ✗ | Both use nvidia/cuda:11.7.1 |
+| EXIF orientation | ✗ | All COCO images orient=1 |
+| pyhesaff `.so` build | ✗ | Bit-identical binaries |
+
+### Remaining suspects
+
+1. **The reference fixture itself**: WBIA reference at
+   `tests/benchmark/reference/wbia-latest-10/` was recorded weeks ago with a
+   potentially different `wildme/wbia:latest` image. Re-recording may shift
+   the baseline.
+
+---
+
+## 2026-06-07d — Image decode + chip pixel hash check
+
+### Test
+
+Decoded the same COCO JPEG in both `wbia-core:latest` and `wildme/wbia:latest`
+Docker images, computed `cv2.warpAffine` chips, and compared MD5 hashes.
+
+### Results
+
+| Operation | wbia-core | WBIA | Match? |
+|---|---|---|---|
+| `cv2.imdecode` (full 3000×2000 image) | `0906a8d7...` | `0906a8d7...` | ✓ bit-identical |
+| `cv2.warpAffine` (771×541 chip) | `76dbfb2a...` | `76dbfb2a...` | ✓ bit-identical |
+
+**JPEG decode and chip extraction produce byte-identical pixels** between both
+images. This also rules out numpy version as a factor — if chips are identical
+and pyhesaff `.so` is identical (verified 06-07c), features must be identical.
+
+Reference was created yesterday — not stale.
+
+### Where we are
+
+The entire input pipeline is verified identical end-to-end:
+- Same base image → same system libs
+- Same JPEG decode → same pixel array ✓
+- Same warpAffine → same chip ✓  
+- Same pyhesaff `.so` → same keypoints/descriptors (implied) ✓
+
+Yet 1.6× score ratio and ρ=0 on ambiguous queries persist.
+
+**The gap is now narrowed to the scoring pipeline internals**:
+- FLANN neighbor selection (label → annotation mapping)
+- Per-feature LNBNN weight computation
+- Self-match / same-name filter scope
+- csum aggregation
+- Any unmodeled WBIA filter (`const_l2`, `bar_l2` edge case)
+
+### Ruled-out theories (final)
+
+| # | Theory | Evidence |
+|---|---|---|
+| 1 | FLANN KD-tree non-determinism | Exact search = same results |
+| 2 | Missing FG weights | `fg_on=False` in both |
+| 3 | Score normalization | Verified `raw/524288`, with sqrt |
+| 4 | Chip dimensions | 700/maxwh matches WBIA |
+| 5 | Chip extraction method | warpAffine verified identical |
+| 6 | OpenCV version | Both 4.7.0.72 pip wheel |
+| 7 | Docker base image | Both nvidia/cuda:11.7.1 |
+| 8 | EXIF orientation | All COCO images orient=1 |
+| 9 | pyhesaff `.so` build | md5+sha256 bit-identical |
+| 10 | JPEG decode pixels | md5 bit-identical |
+| 11 | warpAffine chip pixels | md5 bit-identical |
+| 12 | Reference staleness | Created yesterday |
+| 13 | Numpy version | Implied by #9 + #10 — deterministic arithmetic |
+
+**Next**: Add debug endpoint to dump FLANN distances, LNBNN weights, and csum
+intermediates per query for side-by-side comparison with WBIA's internals.
+```
 ```

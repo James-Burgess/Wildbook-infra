@@ -19,6 +19,7 @@ from targets.wbia import WbiaTargetRunner
 
 TARGET_MAP = {
     "wbia-core": (CoreTargetRunner, "wbia-core:latest"),
+    "wbia-slim": (CoreTargetRunner, "wbia-slim:latest"),
     "wbia-latest": (WbiaTargetRunner, "wildme/wbia:latest"),
     "wbia-nightly": (WbiaTargetRunner, "wildme/wbia:nightly"),
     "wbia-develop": (WbiaTargetRunner, "wildme/wbia:develop"),
