@@ -107,17 +107,17 @@ Uniform weight of 1.0 for every match. Trivial to implement.
 
 ## Verification checklist (WBIA minimal config match)
 
-The benchmark `DEFAULT_CONFIG` in `run_benchmark.py` already matches WBIA's
-default vsmany settings:
+The benchmark `DEFAULT_CONFIG` already matches WBIA's default vsmany settings.
+The benchmark runner creates deterministic `name_uuid` from COCO `individual_ids`
+so annotations of the same individual share a name — enabling meaningful fmech
+grouping and canonical name alignment.
 
 ```python
 DEFAULT_CONFIG = {
     "pipeline_root": "vsmany",
-    "K": 4,
-    "Knorm": 1,
-    "Kpad": 0,
+    "K": 4, "Knorm": 1, "Kpad": 0,
     "kpad_policy": "fixed",
-    "score_method": "nsum",        # WBIA default → fmech path
+    "score_method": "nsum",        # fmech path
     "normalizer_rule": "last",
     "fg_on": False,
     "bar_l2_on": False,
@@ -125,10 +125,9 @@ DEFAULT_CONFIG = {
 }
 ```
 
-To test with `normalizer_rule='name'` (Phase 2), override at runtime:
+Run the benchmark:
 
 ```bash
-# Not yet exposed as CLI flag — edit DEFAULT_CONFIG or add --score-method flag
 python3 tests/benchmark/run_benchmark.py \
   --targets wbia-core wbia-develop \
   --n-annots 15 --n-queries 2 --seed 10
@@ -141,12 +140,12 @@ python3 tests/benchmark/run_benchmark.py \
 | 1a. Kpad dynamic | Small | Medium | DONE |
 | 1b. nsum/fmech name scoring | Medium | High | DONE |
 | 1c. Canonical name alignment | Small | High | DONE |
-| 2a. Normalizer rule 'name' | Medium | High | TODO |
-| 2b. bar_l2 filter | Small | Low | TODO |
-| 2c. ratio filter | Small | Low | TODO |
+| 2a. Normalizer rule 'name' | Medium | High | DONE |
+| 2b. bar_l2 filter | Small | Low | DONE |
+| 2c. ratio filter | Small | Low | DONE |
 | 3a. Requery | Medium | Low | TODO |
 | 3b. Score normalizer | Small | Low | TODO |
-| 3c. const filter | Tiny | Low | TODO |
+| 3c. const filter | Tiny | Low | DONE |
 
 ## Benchmark configuration
 

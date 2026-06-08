@@ -1,12 +1,10 @@
 {
   "target": "wbia-develop",
   "image": "wildme/wbia:develop",
-  "container_id": null,
-  "started_at": "2026-06-07T20:52:47Z",
-  "finished_at": null,
+  "container_id": "7c66efec8bd24290b291ebf02f820133e2cf207c5992dfc35005feb525a86d67",
+  "started_at": "2026-06-07T21:03:35Z",
+  "finished_at": "2026-06-07T21:04:12Z",
   "n_queries": 2,
-  "total_timing_ms": 0,
-  "errors": [
-    "Failed to start: Failed to start container wbia-develop-36c5c44c: docker: Error response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint wbia-develop-36c5c44c (7011c81a56858ad2525d16307ebb4edfb6eb9f463bd9d177bcca81d2a13f39e6): Bind for 0.0.0.0:5001 failed: port is already allocated\n\nRun 'docker run --help' for more information"
-  ]
+  "total_timing_ms": 36517.894881000306,
+  "errors": []
 }

@@ -43,7 +43,7 @@ pip install -e ".[dev]"
 pytest tests/ --ignore=tests/benchmark --ignore=tests/replay -v
 ```
 
-**Results:** 40+ tests in < 2 seconds.
+**Results:** 38 tests in < 2 seconds.
 
 ### What they don't cover
 
@@ -89,6 +89,11 @@ benchmark/
 | `wbia-develop` | `wildme/wbia:develop` | Full WBIA pipeline (dev branch) |
 
 ### CLI
+
+The benchmark `DEFAULT_CONFIG` in `run_benchmark.py` matches WBIA's
+default vsmany pipeline (K=4, Knorm=1, Kpad=0, score_method=nsum/fmech,
+fg_on/bar_l2_on/sv_on=False). Config is passed to both wbia-core
+(via sidecar → `HotSpotterConfig`) and WBIA (via `query_config_dict`).
 
 ```bash
 # Quick smoke test — 5 annots, 2 queries, wbia-core only (no comparison)

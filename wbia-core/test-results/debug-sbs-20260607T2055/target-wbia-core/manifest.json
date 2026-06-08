@@ -1,10 +1,10 @@
 {
   "target": "wbia-core",
   "image": "wbia-core:latest",
-  "container_id": "f0dd86a1aa5a9ebbe0f10df736c1efbf1bee5c3d36ca63da663ca32815abbcf9",
-  "started_at": "2026-06-07T20:52:33Z",
-  "finished_at": "2026-06-07T20:52:40Z",
+  "container_id": "018f192b5ac97a4f6df816dc631baf78f216103ff3528beda08982ebb9da6c1d",
+  "started_at": "2026-06-07T20:59:39Z",
+  "finished_at": "2026-06-07T20:59:46Z",
   "n_queries": 2,
-  "total_timing_ms": 6444.67,
+  "total_timing_ms": 6159.5,
   "errors": []
 }

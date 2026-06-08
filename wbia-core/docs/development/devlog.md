@@ -76,6 +76,62 @@ The sidecar maps bench config keys to internal `HotSpotterConfig`:
 
 ---
 
+## 2026-06-07 — Phase 2: normalizer rule, bar_l2, ratio, const filters
+
+### Benchmark results (15 annots, 2 queries, seed=10)
+
+Config: `K=4, Knorm=1, Kpad=0, kpad_policy=fixed, score_method=nsum (fmech),
+normalizer_rule=last, fg_on=False, bar_l2_on=False, sv_on=False`
+
+| Metric | wbia-core | WBIA develop |
+|---|---|---|
+| Top-1 accuracy | 100% | 100% |
+| Results returned | 6 (canonical) | 14 (all annots) |
+
+The canonical name alignment works correctly: wbia-core returns only the
+best annotation per individual (6 unique individuals among 14 annots),
+using COCO `individual_ids` as `name_uuid`. WBIA develop returns all 14
+annotations because it doesn't receive name grouping via the API.
+
+Spearman ρ (0.857) not directly comparable — the two systems rank at
+different granularities (name-level vs annot-level).
+
+### Changes made
+
+**2a. Normalizer rule `'name'`** (`pipeline.py:178-202`):
+- When `normalizer_rule='name'`, precomputes a per-feature validity mask
+  invalidating features whose normalizer shares a name with any voting
+  neighbour. Also invalidates if normalizer name == query name.
+- Efficient vectorised NumPy implementation.
+
+**2b. `bar_l2` filter** (`pipeline.py:231-232`):
+- When `bar_l2_on=True`, multiplies match weight by `1.0 - vdist`.
+
+**2c. `ratio` filter** (`pipeline.py:234-242`):
+- When `ratio_thresh` set, computes `ratio = vdist / ndist`.
+  If ratio exceeds threshold, match is skipped.
+  Otherwise multiplies by `1.0 - ratio`.
+
+**2d. `const` filter** (`pipeline.py:244-245`):
+- When `const_on=True`, multiplies by 1.0 (no-op, matches WBIA config flag).
+
+**Benchmark wiring:**
+- `runner.py`: Creates deterministic `name_uuid` from COCO `individual_ids`
+  via `uuid5(NAMESPACE_DNS, f"ind-{id}")`. Annotations of the same individual
+  share a name, enabling meaningful fmech grouping.
+- `sidecar/api.py`: Falls back `name_uuid = annot_uuid` when none provided.
+  Maps `"nsum"` → `"nsum_wbia"`, `"csum"` → `"csum_wbia"`.
+- `DEFAULT_CONFIG` now includes `score_method: "nsum"`, `kpad_policy`,
+  `normalizer_rule`, `bar_l2_on`.
+
+### Verification
+
+```bash
+make test-unit    # 38/38 pass
+```
+
+---
+
 ## 2026-06-06c — Chip extraction + distance normalization fixes
 
 ### Root cause: missing chip extraction
