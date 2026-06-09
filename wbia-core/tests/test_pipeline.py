@@ -93,7 +93,9 @@ class TestIdentify:
         """Annotations sharing the query's name should be filtered out."""
         db = _make_synthetic_database(3, 20, same_name_pairs=[(0, 1)])
         config = IdentificationConfig(
-            hotspotter=HotSpotterConfig(sv_on=False, num_return=5)
+            hotspotter=HotSpotterConfig(
+                sv_on=False, num_return=5, can_match_samename=False
+            )
         )
         results = identify(0, db, config)
         uuids = [r.annot_uuid for r in results]

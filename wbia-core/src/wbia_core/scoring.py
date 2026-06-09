@@ -21,15 +21,11 @@ from wbia_core.data import AnnotatedImage, FeatureSet, Match, ScoredMatch
 def per_feature_fg(ann: AnnotatedImage) -> np.ndarray:
     """Per-keypoint foreground weight for one annotation.
 
-    Uses the same gaussian heatmap (sigma = 25 % of dimension) as WBIA's
-    ``nn_weights._per_feature_fg``.
+    Returns constant 1.0 for all keypoints — matching WBIA's
+    ``empty_probchips`` fallback when no CNN/RF detector is available.
+    When ``fg_on=False`` the result is identical regardless.
     """
-    h, w = ann.image.shape[:2]
-    prob = _probchip(h, w)
-    kp = ann.features.keypoints
-    xs = np.clip(np.round(kp[:, 0]).astype(np.int64), 0, w - 1)
-    ys = np.clip(np.round(kp[:, 1]).astype(np.int64), 0, h - 1)
-    return prob[ys, xs].astype(np.float64)
+    return np.ones(len(ann.features.keypoints), dtype=np.float64)
 
 
 def filter_self_matches(
@@ -110,14 +106,6 @@ def weight_neighbors_lnbnn(
         weights[nn_dists > norm_dists * lnbnn_ratio] = 0.0
 
     return weights.astype(np.float64)
-
-
-def _probchip(height: int, width: int) -> np.ndarray:
-    """2D gaussian probability heatmap (sigma = 25 % of each dimension)."""
-    cy, cx = (height - 1) / 2.0, (width - 1) / 2.0
-    sy, sx = height * 0.25, width * 0.25
-    yy, xx = np.mgrid[0:height, 0:width]
-    return np.exp(-0.5 * ((yy - cy) / sy) ** 2 - 0.5 * ((xx - cx) / sx) ** 2)
 
 
 def _compute_fg_for_database(database: list[AnnotatedImage]) -> list[np.ndarray]:

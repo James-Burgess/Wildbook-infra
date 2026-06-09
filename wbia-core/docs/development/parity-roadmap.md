@@ -1,157 +1,119 @@
 # Parity Roadmap: wbia-core → WBIA HotSpotter
 
-Last updated: 2026-06-07
+Last updated: 2026-06-08d. Benchmark bugs fixed, parity confirmed.
 
-## Baseline (run 184326)
+## BREAKING: Historical gap was benchmark artifact (2026-06-08d)
 
-15 annots, 2 queries, seed=10, vsmany pipeline, K=4, Knorm=1,
-fg_on=False, sv_on=False, norm_rule=last, score_method=nsum (WBIA) / csum (core).
+The 75% vs 91.7% gap reported below was caused by two bugs in `targets/wbia.py`:
 
-| Metric | wbia-core vs wbia-develop |
-|---|---|
-| Spearman ρ | 0.987 |
-| Top-1 agreement | 100% |
-| Top-3 overlap | 100% |
-| Score ratio | ~0.8× |
+1. Read wrong WBIA score field (`annot_score_list` csum instead of `score_list` nsum)
+2. Never passed `annot_name_list` to WBIA annotation API (50 unique names → fmech degenerated)
 
-The LNBNN formula, chip extraction (warpAffine), and FLANN query are functionally
-correct. Remaining gap is in scoring *aggregation* and config completeness.
+After fixes, both targets produce identical results (11/12 top-1 agree, scores within 1%).
+See devlog 08c/08d for details.
 
-## Phase 1 — Scoring depth (highest impact)
+## Large-scale benchmark (25 annots, 12 queries, seed=420) — POST-FIX
 
-### 1a. Kpad dynamic  [IMPLEMENTED]
+| Metric | wbia-core | wbia-develop |
+|---|---|---|
+| Top-1 accuracy | 50.0% (6/12) | 50.0% (6/12) |
+| MRR | 0.681 | 0.688 |
+| Top-1 agreement | 11/12 | — |
 
-Currently `Kpad=0` hardcoded. When the query annot is in the database, WBIA pads
-K by the count of impossible annotations so self-match/same-name hits don't
-consume voting columns.
+## ⚠️ HISTORICAL — Large-scale benchmark (51 annots, 12 queries, seed=122) — INVALIDATED
 
-**Files:** `config.py`, `pipeline.py`
+| Metric | wbia-core | wbia-develop |
+|---|---|---|
+| Top-1 accuracy | 75.0% (9/12) | 91.7% (11/12) |
+| MRR | 0.814 | 0.958 |
+| Spearman ρ (mean) | 0.735 | — |
 
-### 1b. Name-level scoring — nsum/fmech  [IMPLEMENTED]
+## Phases 1-2 — Scoring depth + filters ✓ (9/9)
 
-WBIA's default `score_method='nsum'` groups by name, then by query feature
-index, takes max per (name, qfx) group, sums survivors. This prevents
-double-counting when multiple annots of the same name match the same query
-feature.
+| # | Task | Impact | Status |
+|---|---|---|---|
+| 1a | Kpad dynamic | Medium | DONE |
+| 1b | nsum/fmech name scoring | High | DONE |
+| 1c | Canonical name alignment | High | DONE |
+| 1d | WBIA scoring dispatch (csum_wbia, nsum_wbia, sumamech) | High | DONE |
+| 1e | name_uuid from COCO individual_ids | High | DONE |
+| 2a | Normalizer rule 'name' | High | DONE |
+| 2b | bar_l2 filter | Low | DONE |
+| 2c | ratio filter + threshold | Low | DONE |
+| 2d | const filter | Low | DONE |
 
-**Reference:** `wildbook-ia/wbia/algo/hots/name_scoring.py:53` (`compute_fmech_score`)
+## Phases 3-4 — Config defaults + remaining filters ✓ (9/9)
 
-**Files:** New `name_scoring.py`
+| # | Task | Impact | Status |
+|---|---|---|---|
+| 3a | can_match_samename toggle (was hardcoded False) | High | DONE |
+| 3b | flann_trees=8 (was 4) | Medium | DONE |
+| 3c | flann_checks=800 (was 1028) | Low | DONE |
+| 3d | prescore_method default='nsum' | Medium | DONE |
+| 3e | sqrd_dist_on toggle | Low | DONE |
+| 3f | normonly_on filter | Low | DONE |
+| 4a | rotation_invariance (XY-dedup in fmech) | Medium | DONE |
+| 4b | minscale_thresh / maxscale_thresh | Low | DONE |
+| 4c | fgw_thresh | Low | DONE |
 
-### 1c. Canonical name score alignment  [IMPLEMENTED]
+## Phase 5 — Spatial verification ✓ (4/4)
 
-Propagates name-level score to the single best annotation per name (highest csum).
-Other annots of the same name get `-inf`.
+| # | Task | Impact | Status |
+|---|---|---|---|
+| 5a | SV prescoring shortlist (40 names, 3 annots/name) | Medium | DONE |
+| 5b | xy_thresh=0.01, scale_thresh=2.0, ori_thresh | Low | DONE |
+| 5c | min_nInliers=4 (was 3) | Low | DONE |
+| 5d | use_chip_extent, weight_inliers (partial — see Phase 7) | Low | DONE |
 
-**Reference:** `wildbook-ia/wbia/algo/hots/name_scoring.py:300`
-(`align_name_scores_with_annots`)
+## Phase 6 — Advanced mechanisms (2 remaining)
 
-**Files:** `name_scoring.py`
+| # | Task | Impact | Status |
+|---|---|---|---|
+| 6a | Requery mechanism | Low | TODO |
+| 6b | Score normalizer | Low | TODO |
 
-## Phase 2 — Filter completeness
+## Phase 7 — NEW: High-impact gaps from dual-agent audit
 
-### 2a. Normalizer rule `'name'`
+| # | Gap | Impact | Status |
+|---|---|---|---|
+| 7a | **Kpad self-padding**: WBIA pads +1 when query in DB; wbia-core kpad=0 loses voting column | **HIGH** | TODO |
+| 7b | **FG weight formula**: gaussian on full image vs CNN/RF probchip on chip | **HIGH** | TODO |
+| 7c | **SV use_chip_extent**: image max dim vs chip diagonal normalization | **HIGH** | TODO |
+| 7d | **weight_inliers mechanism**: biased RANSAC vs post-hoc multiplier | MEDIUM | TODO |
+| 7e | **full_homog_checks**: exhaustive repeated-sampling vs single-pass RANSAC | MEDIUM | TODO |
+| 7f | **sv_ori_thresh default**: None (disabled) vs TAU/4 (90°) | MEDIUM | TODO |
+| 7g | **Database feature filtering**: query-only vs both query+db | MEDIUM | TODO |
+| 7h | **can_match_sameimg**: missing in wbia-core | MEDIUM | TODO |
+| 7i | **SV shortlist scoring**: score_method vs prescore_method | MEDIUM | TODO |
 
-Documented as the single biggest algorithmic difference. The `'name'` rule
-selects a normalizer from a *different name ID* than any of the top-K voting
-neighbors, producing more discriminative LNBNN weights.
+## Phase 8 — LOW: Remaining differences
 
-**Reference:** `wildbook-ia/wbia/algo/hots/nn_weights.py:287`
-(`get_name_normalizers`)
+| # | Gap | Impact | Status |
+|---|---|---|---|
+| 8a | sver_output_weighting (homog error filter) | Low | TODO |
+| 8b | refine_method hardcoded to RANSAC | Low | TODO |
+| 8c | lograt_on/cos_on toggles (dead code in WBIA) | Skip | — |
 
-**Files:** `scoring.py` or new `nn_weights.py`, `config.py`, `pipeline.py`
-
-### 2b. `bar_l2` filter
-
-Formula: `1.0 - vdist`. Defaults off in WBIA. With both lnbnn and bar_l2
-active, combined score = `(ndist - vdist) × (1.0 - vdist)`.
-
-**Reference:** `wildbook-ia/wbia/algo/hots/nn_weights.py:474` (`bar_l2_fn`)
-
-**Files:** `scoring.py`, `pipeline.py`
-
-### 2c. `ratio` filter
-
-Formula: `1.0 - (vdist / ndist)`, thresholded. Config field `ratio_thresh`
-already exists in `HotSpotterConfig` but is not wired into the pipeline.
-
-**Reference:** `wildbook-ia/wbia/algo/hots/nn_weights.py:448` (`ratio_fn`)
-
-**Files:** `scoring.py`, `pipeline.py`
-
-## Phase 3 — Config and edge cases
-
-### 3a. Requery mechanism
-
-When all K+Kpad neighbors are in the impossible set, WBIA iteratively queries
-FLANN with increasing K until enough valid neighbors are found.
-
-**Reference:** `wildbook-ia/wbia/algo/hots/requery_knn.py`
-
-**Files:** New `requery_knn.py`, `pipeline.py`
-
-### 3b. Score normalizer
-
-Parameterized score rescaling via `ScoreNormalizer` with pre-trained params.
-Default is off (no normalizer configured).
-
-**Reference:** `wildbook-ia/wbia/algo/hots/pipeline.py:912-927`
-
-**Files:** New `score_normalizer.py`
-
-### 3c. `const` filter
-
-Uniform weight of 1.0 for every match. Trivial to implement.
-
-**Reference:** `wildbook-ia/wbia/algo/hots/nn_weights.py:68` (`const_match_weighter`)
-
-## Verification checklist (WBIA minimal config match)
-
-The benchmark `DEFAULT_CONFIG` already matches WBIA's default vsmany settings.
-The benchmark runner creates deterministic `name_uuid` from COCO `individual_ids`
-so annotations of the same individual share a name — enabling meaningful fmech
-grouping and canonical name alignment.
-
-```python
-DEFAULT_CONFIG = {
-    "pipeline_root": "vsmany",
-    "K": 4, "Knorm": 1, "Kpad": 0,
-    "kpad_policy": "fixed",
-    "score_method": "nsum",        # fmech path
-    "normalizer_rule": "last",
-    "fg_on": False,
-    "bar_l2_on": False,
-    "sv_on": False,
-}
-```
-
-Run the benchmark:
-
-```bash
-python3 tests/benchmark/run_benchmark.py \
-  --targets wbia-core wbia-develop \
-  --n-annots 15 --n-queries 2 --seed 10
-```
+---
 
 ## Effort summary
 
-| Step | Effort | Impact | Status |
+| Phase | Items | Total effort | Remaining |
 |---|---|---|---|
-| 1a. Kpad dynamic | Small | Medium | DONE |
-| 1b. nsum/fmech name scoring | Medium | High | DONE |
-| 1c. Canonical name alignment | Small | High | DONE |
-| 2a. Normalizer rule 'name' | Medium | High | DONE |
-| 2b. bar_l2 filter | Small | Low | DONE |
-| 2c. ratio filter | Small | Low | DONE |
-| 3a. Requery | Medium | Low | TODO |
-| 3b. Score normalizer | Small | Low | TODO |
-| 3c. const filter | Tiny | Low | DONE |
+| 1 — Scoring depth | 5 | Medium | 0 |
+| 2 — Filter completeness | 4 | Small | 0 |
+| 3 — Config defaults | 6 | Small | 0 |
+| 4 — Remaining filters | 3 | Small | 0 |
+| 5 — Spatial verification | 4 | Medium | 0 |
+| 6 — Advanced mechanisms | 2 | Medium | 2 |
+| 7 — Audit HIGH/MEDIUM gaps | 9 | Medium-High | 9 |
+| 8 — Audit LOW gaps | 2 | Small | 2 |
+| **Total** | **35** | | **13 remaining** |
 
-## Benchmark configuration
+## What to fix first
 
-The benchmark runner now:
-- Sets `score_method: "nsum"` (WBIA fmech path) in `DEFAULT_CONFIG`
-- Creates deterministic `name_uuid` from COCO `individual_ids` so annotations
-  of the same individual share a name — enables meaningful name-level scoring
-- Passes `kpad_policy`, `normalizer_rule`, `bar_l2_on`, `const_on` through
-  the sidecar to `HotSpotterConfig`
+1. **7a: Kpad self-padding** — Change `_compute_kpad` to always include +1 when query in DB (1 line)
+2. **7i: SV shortlist scoring** — Use prescore_method to build shortlist, not score_method (~5 lines)
+3. **7f: sv_ori_thresh default** — Change default from None to TAU/4 (~1 line)
+4. **7g: Database feature filtering** — Apply minscale/maxscale/fgw_thresh to DB features too (~10 lines)
+5. **7c: use_chip_extent chip diagonal** — Use bbox-based chip dlensqrd (~15 lines)

@@ -95,10 +95,18 @@ def normalise_wbia_result(raw: dict, db_aid_list: list[str]) -> list[dict]:
     """Parse WBIA's ``json_result.cm_dict`` into canonical annot_scores.
 
     WBIA returns scores nested under each query annotation UUID inside
-    ``cm_dict``.  The annot_score_list inside matches one-to-one with
-    ``db_aid_list`` (the DB annotation UUIDs in the order they were
-    sent to the query endpoint).  This function uses that ordering to
-    map scores back to the canonical ``aid`` strings.
+    ``cm_dict``.  The lists inside match one-to-one with ``db_aid_list``
+    (the DB annotation UUIDs in the order they were sent to the query
+    endpoint).
+
+    Reads ``score_list`` (post-name-scoring canonical scores) rather than
+    ``annot_score_list`` (raw per-annotation csum pre-name-scoring) so
+    that name-level methods (nsum / fmech, csum_wbia, sumamech) are
+    correctly compared against wbia-core's name-aligned output.
+
+    Non-canonical annotations receive ``-inf`` from WBIA's
+    ``align_name_scores_with_annots`` and are filtered out here (only
+    the top annotation per unique name carries the name-level score).
     """
     assert (
         raw.get("status") == "completed"
@@ -110,7 +118,7 @@ def normalise_wbia_result(raw: dict, db_aid_list: list[str]) -> list[dict]:
 
     # Take the first (and only) query annotation
     data = next(iter(cm_dict.values()))
-    score_list = data.get("annot_score_list", [])
+    score_list = data.get("score_list", data.get("annot_score_list", []))
     num_match_list = data.get("num_matches_list", [])
 
     if num_match_list and len(num_match_list) != len(score_list):
@@ -123,6 +131,8 @@ def normalise_wbia_result(raw: dict, db_aid_list: list[str]) -> list[dict]:
         try:
             s = float(score)
         except (ValueError, TypeError):
+            continue
+        if s == float("-inf"):
             continue
         n = int(num_match_list[i]) if num_match_list else 0
         result.append({"aid": db_aid_list[i], "score": s, "num_matches": n})
@@ -303,6 +313,7 @@ class WbiaTargetRunner(TargetRunner):
 
         filenames: list[str] = []
         entry_metas: list[dict] = []
+        annot_names: list[str | None] = []
 
         # Query image first
         q_bytes = base64.b64decode(query_b64)
@@ -317,6 +328,7 @@ class WbiaTargetRunner(TargetRunner):
                 "is_query": True,
             }
         )
+        annot_names.append(None)
         all_entries.append(
             {
                 "aid": query_aid,
@@ -332,6 +344,7 @@ class WbiaTargetRunner(TargetRunner):
             bbox = db_entry.get("bbox", [0, 0, 0, 0])
             species = db_entry.get("species", "")
             aid = db_entry.get("aid", f"db_{i}")
+            name_uuid = db_entry.get("name_uuid")
             fname = f"annot_q{query_index}_db{i}.png"
             img_bytes = base64.b64decode(img_b64)
             (image_dir / fname).write_bytes(img_bytes)
@@ -344,6 +357,7 @@ class WbiaTargetRunner(TargetRunner):
                     "is_query": False,
                 }
             )
+            annot_names.append(name_uuid)
             all_entries.append(
                 {
                     "aid": aid,
@@ -378,6 +392,7 @@ class WbiaTargetRunner(TargetRunner):
                     "annot_bbox_list": bboxes,
                     "annot_theta_list": [0.0] * len(image_uuid_strs),
                     "annot_species_list": species_list,
+                    "annot_name_list": annot_names,
                 },
             )
             annot_uuid_strs = [_unwrap_uuid(u) for u in annot_uuids]

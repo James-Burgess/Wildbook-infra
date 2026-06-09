@@ -39,4 +39,6 @@ __all__ = [
     "compute_sumamech_name_score",
     "align_name_scores_with_annots",
     "group_matches_by_name",
+    # Spatial
+    "make_sver_shortlist",
 ]

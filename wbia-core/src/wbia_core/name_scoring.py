@@ -7,7 +7,34 @@ from __future__ import annotations
 
 import uuid
 
+import numpy as np
+
 from wbia_core.data import Match
+
+
+def _compute_xy_combo_ids(
+    keypoints: np.ndarray,
+) -> dict[int, int]:
+    """Map feature indices to XY-coordinate combo IDs.
+
+    Keypoints at the same spatial position (rounded) get the same
+    combo ID — used by ``query_rotation_heuristic`` to prevent
+    rotated duplicate features from voting multiple times per name.
+
+    Matches WBIA's ``vt.compute_unique_arr_dataids(xys1_)``.
+    """
+    xs = np.round(keypoints[:, 0]).astype(np.int64)
+    ys = np.round(keypoints[:, 1]).astype(np.int64)
+    xy_pairs = list(zip(xs, ys, strict=True))
+    unique = {}
+    next_id = 0
+    combo: dict[int, int] = {}
+    for fx, pair in enumerate(xy_pairs):
+        cid = unique.setdefault(pair, next_id)
+        if cid == next_id:
+            next_id += 1
+        combo[fx] = cid
+    return combo
 
 
 def group_matches_by_name(
@@ -23,30 +50,40 @@ def group_matches_by_name(
 
 def compute_fmech_score(
     matches_by_name: dict[uuid.UUID, list[Match]],
+    query_keypoints: np.ndarray | None = None,
 ) -> dict[uuid.UUID, float]:
     """Compute nsum / fmech name-level scores.
 
     WBIA algorithm (``compute_fmech_score``, name_scoring.py:53):
 
     1. Group feature matches by name.
-    2. Within each name, group matches by query feature index (qfx).
-       A query feature may only vote **once** per name.
-    3. For each (name, qfx) group, keep only the match with the
-       **maximum** combined weight (``dist``).
+    2. Within each name, group matches by query feature index (qfx)
+       or, if *query_keypoints* is provided, by XY coordinate
+       (``query_rotation_heuristic`` — prevents rotated duplicate
+       features from voting multiple times per name).
+    3. For each group, keep only the match with the **maximum**
+       combined weight (``dist``).
     4. Sum the surviving feature scores to get the name score.
-
-    This prevents double-counting when multiple annotations of the same
-    name match the same query feature.
     """
+    combo_from_fx: dict[int, int] | None = None
+    if query_keypoints is not None:
+        combo_from_fx = _compute_xy_combo_ids(query_keypoints)
+
     nsum: dict[uuid.UUID, float] = {}
     for name_uuid, name_matches in matches_by_name.items():
-        by_qfx: dict[int, list[Match]] = {}
-        for m in name_matches:
-            by_qfx.setdefault(m.qfx, []).append(m)
+        if combo_from_fx is None:
+            by_group: dict[int, list[Match]] = {}
+            for m in name_matches:
+                by_group.setdefault(m.qfx, []).append(m)
+        else:
+            by_group = {}
+            for m in name_matches:
+                cid = combo_from_fx.get(m.qfx, m.qfx)
+                by_group.setdefault(cid, []).append(m)
 
         name_score = 0.0
-        for qfx_group in by_qfx.values():
-            best = max(qfx_group, key=lambda x: x.dist)
+        for group in by_group.values():
+            best = max(group, key=lambda x: x.dist)
             name_score += best.dist
 
         nsum[name_uuid] = name_score
@@ -133,21 +170,21 @@ def score_matches_with_names(
     annot_uuids: list[uuid.UUID],
     annot_name_map: dict[uuid.UUID, uuid.UUID],
     score_method: str = "nsum_wbia",
+    query_keypoints: np.ndarray | None = None,
 ) -> tuple[dict[uuid.UUID, float], dict[uuid.UUID, float]]:
     """Full WBIA scoring chain: annot csum → name scoring → canonical.
 
     Args:
-        matches: Flat feature-match list.  Each match's ``annot_uuid``
-            is looked up from ``annot_uuids[daid]``.
+        matches: Flat feature-match list.
         annot_uuids: Mapping from database index → annot_uuid.
         annot_name_map: Mapping from annot_uuid → name_uuid.
         score_method: ``"nsum_wbia"`` (fmech), ``"csum_wbia"`` (max-per-name),
             or ``"sumamech"``.
+        query_keypoints: Optional [N, 6] query keypoints for
+            ``query_rotation_heuristic`` XY-dedup in fmech.
 
     Returns:
         ``(csum_annot_scores, canonical_scores)`` — both ``{annot_uuid: score}``.
-        Canonical scores only include the best annot per name; all others
-        are excluded.
     """
     csum: dict[uuid.UUID, float] = {}
     for m in matches:
@@ -160,7 +197,7 @@ def score_matches_with_names(
         name_scores = compute_sumamech_name_score(csum, annot_name_map)
     elif score_method == "nsum_wbia":
         matches_by_name = group_matches_by_name(matches)
-        name_scores = compute_fmech_score(matches_by_name)
+        name_scores = compute_fmech_score(matches_by_name, query_keypoints)
     else:
         raise ValueError(f"Unknown score_method: {score_method!r}")
 

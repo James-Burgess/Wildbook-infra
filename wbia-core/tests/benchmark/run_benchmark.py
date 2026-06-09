@@ -29,12 +29,15 @@ DEFAULT_CONFIG = {
     "K": 4,
     "Knorm": 1,
     "Kpad": 0,
-    "kpad_policy": "fixed",
+    "kpad_policy": "dynamic",
     "score_method": "nsum",
     "normalizer_rule": "last",
+    "can_match_samename": True,
     "fg_on": False,
     "bar_l2_on": False,
     "sv_on": False,
+    "sv_n_name_shortlist": 40,
+    "sv_n_annot_per_name": 3,
 }
 
 

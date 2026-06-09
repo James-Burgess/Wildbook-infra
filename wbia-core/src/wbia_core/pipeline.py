@@ -22,7 +22,7 @@ from wbia_core.data import AnnotatedImage, FeatureSet, Match, ScoredMatch
 from wbia_core.knn import build_global_index, exact_knn, query_index
 from wbia_core.name_scoring import score_matches_with_names
 from wbia_core.scoring import per_feature_fg, score_matches
-from wbia_core.spatial import spatial_verify
+from wbia_core.spatial import make_sver_shortlist, spatial_verify
 
 from wbia_core import debug_log as dlog
 
@@ -36,15 +36,18 @@ def _compute_kpad(hs, query_annot_index: int, database: list[AnnotatedImage]) ->
       ``build_impossible_daids_list`` (pipeline.py:281).
     """
     if hs.kpad_policy == "fixed":
-        return hs.kpad
+        kpad = hs.kpad
+    else:
+        kpad = 1  # self
+        qname = database[query_annot_index].name_uuid
+        if qname is not None:
+            for i, a in enumerate(database):
+                if i != query_annot_index and a.name_uuid == qname:
+                    kpad += 1
 
-    impossible = 1  # self
-    qname = database[query_annot_index].name_uuid
-    if qname is not None:
-        for i, a in enumerate(database):
-            if i != query_annot_index and a.name_uuid == qname:
-                impossible += 1
-    return impossible
+    if kpad == 0 and query_annot_index < len(database):
+        kpad = 1
+    return kpad
 
 
 def identify(
@@ -82,6 +85,30 @@ def identify(
     knorm = 1  # WBIA default
     kpad = _compute_kpad(hs, query_annot_index, database)
     k_total = k + kpad + knorm  # e.g. 4 + 0 + 1 = 5 or 4 + 1 + 1 = 6
+
+    # ---- 0. Pre-query feature filtering (minscale/maxscale/fgw_thresh) ----
+    query_kp = query_features.keypoints
+    query_desc = query_features.descriptors
+    feat_mask = np.ones(len(query_features), dtype=bool)
+
+    if hs.minscale_thresh is not None:
+        scales = query_kp[:, 2]
+        feat_mask &= scales >= hs.minscale_thresh
+    if hs.maxscale_thresh is not None:
+        scales = query_kp[:, 2]
+        feat_mask &= scales <= hs.maxscale_thresh
+    if hs.fgw_thresh is not None:
+        q_fg = per_feature_fg(database[query_annot_index])
+        feat_mask &= q_fg >= hs.fgw_thresh
+
+    if not feat_mask.all():
+        query_features = FeatureSet(
+            keypoints=query_kp[feat_mask],
+            descriptors=query_desc[feat_mask],
+        )
+        assert (
+            len(query_features) > 0
+        ), "All query features filtered out by minscale/maxscale/fgw_thresh"
 
     # ---- 1. Build global FLANN index over ALL annotations ----
     # WBIA uses daid_list order → same order as database list
@@ -128,10 +155,11 @@ def identify(
     dlog.stage_raw_dists(raw_dists, raw_labels)
 
     # Post-hoc distance normalisation (WBIA VEC_PSEUDO_MAX_DISTANCE_SQRD)
-    # WBIA divides raw SSE by 524288, then takes sqrt (sqrd_dist_on=False default).
+    # WBIA divides raw SSE by 524288, then optionally takes sqrt.
     max_distance_sqrd = 2.0 * (512.0**2.0)
     dists = (np.maximum(raw_dists, 0.0) / max_distance_sqrd).astype(np.float64)
-    dists = np.sqrt(dists)
+    if not hs.sqrd_dist_on:
+        dists = np.sqrt(dists)
     dlog.stage_dist_norm(dists)
     labels = raw_labels.astype(np.int64)
 
@@ -157,14 +185,14 @@ def identify(
     # Like WBIA's baseline_neighbor_filter: only the first K+Kpad columns
     # are checked; the normaliser column is NOT filtered.
     qname = database[query_annot_index].name_uuid
-    if qname is not None:
+    if hs.can_match_samename or qname is None:
+        same_name_set: set[int] = set()
+    else:
         same_name_set = {
             i
             for i, a in enumerate(database)
             if i != query_annot_index and a.name_uuid == qname
         }
-    else:
-        same_name_set = set()
 
     invalid = (voting_annot_all == query_annot_index) | np.isin(
         voting_annot_all, list(same_name_set)
@@ -219,7 +247,11 @@ def identify(
         if normalizer_valid is not None and not normalizer_valid[qfx]:
             continue
         for j in range(k + kpad):
-            w = float(norm_dists[qfx, 0]) - float(voting_dists_all[qfx, j])
+            vdist = float(
+                norm_dists[qfx, 0] if hs.normonly_on else voting_dists_all[qfx, j]
+            )
+            ndist = float(norm_dists[qfx, 0])
+            w = ndist - vdist
             db_idx = int(voting_annot_all[qfx, j])
             if db_idx < 0 or invalid[qfx, j]:
                 continue
@@ -231,14 +263,10 @@ def identify(
                 w *= np.sqrt(float(q_fgw[qfx]) * float(fg_weights[db_idx][dfx]))
 
             if hs.bar_l2_on:
-                w *= 1.0 - float(voting_dists_all[qfx, j])
+                w *= 1.0 - vdist
 
             if hs.ratio_thresh is not None:
-                ratio = (
-                    float(voting_dists_all[qfx, j]) / float(norm_dists[qfx, 0])
-                    if norm_dists[qfx, 0] > 0
-                    else 1.0
-                )
+                ratio = vdist / ndist if ndist > 0 else 1.0
                 if ratio > hs.ratio_thresh:
                     continue
                 w *= 1.0 - ratio
@@ -266,8 +294,11 @@ def identify(
         annot_name_map = {
             a.annot_uuid: a.name_uuid for a in database if a.name_uuid is not None
         }
+        qk: np.ndarray | None = (
+            query_features.keypoints if hs.rotation_invariance else None
+        )
         csum_annot, canonical = score_matches_with_names(
-            matches, annot_uuids, annot_name_map, hs.score_method
+            matches, annot_uuids, annot_name_map, hs.score_method, qk
         )
         scored = _canonical_to_scoredmatches(canonical, matches, database, annot_uuids)
         _annot_to_matches: dict[int, tuple[float, int]] = {}
@@ -293,7 +324,32 @@ def identify(
 
     # ---- 7. Spatial verification ----
     if hs.sv_on:
-        scored = spatial_verify(scored, query_features, database)
+        _prescored = scored
+        if hs.prescore_method != hs.score_method:
+            _prescored = _prescore_candidates(matches, database, hs.prescore_method)
+        sver_candidates = make_sver_shortlist(
+            _prescored,
+            n_names=hs.sv_n_name_shortlist,
+            n_annots_per_name=hs.sv_n_annot_per_name,
+        )
+        sver_candidates = spatial_verify(
+            sver_candidates,
+            query_features,
+            database,
+            min_inliers=4,
+            xy_thresh=hs.sv_xy_thresh,
+            scale_thresh=hs.sv_scale_thresh,
+            ori_thresh=hs.sv_ori_thresh,
+            use_chip_extent=hs.sv_use_chip_extent,
+            weight_inliers=hs.sv_weight_inliers,
+        )
+        sv_map = {sm.annot_uuid: sm for sm in sver_candidates if sm.sv_inliers > 0}
+        for sm in scored:
+            if sm.annot_uuid in sv_map:
+                replaced = sv_map[sm.annot_uuid]
+                sm.sv_inliers = replaced.sv_inliers
+                sm.sv_homography = replaced.sv_homography
+                sm.score = replaced.score
 
     if hs.sv_on and hs.prescore_method != hs.score_method:
         if hs.score_method in _wbia_methods:
@@ -345,3 +401,26 @@ def _canonical_to_scoredmatches(
 
     results.sort(key=lambda r: r.score, reverse=True)
     return results
+
+
+def _prescore_candidates(
+    matches: list[Match],
+    database: list[AnnotatedImage],
+    score_method: str,
+) -> list[ScoredMatch]:
+    """Quick prescore for SV shortlisting using *score_method*.
+
+    Returns a plain per-annot csum list for ``make_sver_shortlist``.
+    """
+    _wbia_methods = {"csum_wbia", "nsum_wbia", "sumamech"}
+    if score_method in _wbia_methods:
+        annot_uuids = [a.annot_uuid for a in database]
+        annot_name_map = {
+            a.annot_uuid: a.name_uuid for a in database if a.name_uuid is not None
+        }
+        _, canonical = score_matches_with_names(
+            matches, annot_uuids, annot_name_map, score_method
+        )
+        return _canonical_to_scoredmatches(canonical, matches, database, annot_uuids)
+    else:
+        return score_matches(matches, database, score_method)
