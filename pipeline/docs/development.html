@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Development — Wildbook Pipeline</title>
+<link rel="stylesheet" href="https://classless.de/classless-tiny.css">
+</head>
+<body>
+<header>
+  <nav>
+    <ul>
+      <li><strong>Wildbook Pipeline</strong></li>
+      <li><a href="index.html">Overview</a></li>
+      <li><a href="structure.html">Structure</a></li>
+      <li><a href="development.html">Development</a></li>
+      <li><a href="production.html">Production</a></li>
+      <li><a href="configuration.html">Configuration</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main>
+<h1>Development</h1>
+
+<p>The development environment uses <code>docker-compose.yml</code> for lightweight local runs.</p>
+
+<h2>Makefile Targets</h2>
+
+<table>
+  <thead>
+    <tr><th>Target</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>make install</code></td><td>Create venv and install dependencies</td></tr>
+    <tr><td><code>make run</code></td><td>Run the Kedro pipeline</td></tr>
+    <tr><td><code>make test</code></td><td>Run tests</td></tr>
+    <tr><td><code>make lint</code></td><td>Run flake8 and isort</td></tr>
+    <tr><td><code>make clean</code></td><td>Remove venv, caches, and build artifacts</td></tr>
+    <tr><td><code>make docker-up</code></td><td>Start dev containers (kedro + viz + docs)</td></tr>
+    <tr><td><code>make docker-down</code></td><td>Stop dev containers</td></tr>
+    <tr><td><code>make viz-up</code></td><td>Start kedro-viz on port 4141</td></tr>
+    <tr><td><code>make viz-down</code></td><td>Stop kedro-viz</td></tr>
+    <tr><td><code>make docs-up</code></td><td>Start docs nginx on port 8080</td></tr>
+    <tr><td><code>make docs-down</code></td><td>Stop docs nginx</td></tr>
+  </tbody>
+</table>
+
+<h2>Services</h2>
+
+<table>
+  <thead>
+    <tr><th>Service</th><th>Port</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>kedro</td><td>-</td><td>Runs the data pipeline</td></tr>
+    <tr><td>viz</td><td>4141</td><td>Kedro pipeline visualization UI</td></tr>
+    <tr><td>docs</td><td>8080</td><td>Static docs served via nginx</td></tr>
+  </tbody>
+</table>
+
+<h2>Example Pipeline</h2>
+
+<p>The example pipeline has four nodes:</p>
+
+<ol>
+  <li><strong>load_images_node</strong> — reads <code>data/01_raw/images.csv</code></li>
+  <li><strong>preprocess_node</strong> — drops nulls, strips filenames</li>
+  <li><strong>extract_features_node</strong> — computes feature vectors</li>
+  <li><strong>generate_report_node</strong> — produces a summary report</li>
+</ol>
+
+<p>Run it with:</p>
+<pre><code>make run</code></pre>
+
+<p>View the DAG in Kedro Viz:</p>
+<pre><code>make viz-up
+# Open http://localhost:4141</code></pre>
+</main>
+
+<footer>
+  <p>Wildbook Pipeline &mdash; powered by Kedro</p>
+</footer>
+</body>
+</html>

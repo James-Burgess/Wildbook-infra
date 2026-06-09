@@ -1,0 +1,74 @@
+images:
+  type: MemoryDataset
+
+images_with_detections:
+  type: MemoryDataset
+
+images_with_embeddings:
+  type: MemoryDataset
+
+identified:
+  type: MemoryDataset
+
+results:
+  type: MemoryDataset
+
+## identify_109 pipeline
+
+images_109:
+  type: MemoryDataset
+
+identified_109:
+  type: MemoryDataset
+
+results_109:
+  type: MemoryDataset
+
+## identify_1010_coco pipeline
+
+images_coco:
+  type: MemoryDataset
+
+images_with_bboxes_coco:
+  type: MemoryDataset
+
+images_with_embeddings_coco:
+  type: MemoryDataset
+
+identified_coco:
+  type: MemoryDataset
+
+results_coco:
+  type: MemoryDataset
+
+## new_ml pipeline
+
+raw_images:
+  type: MemoryDataset
+
+images_newml:
+  type: MemoryDataset
+
+images_detected_newml:
+  type: MemoryDataset
+
+images_classified_newml:
+  type: MemoryDataset
+
+images_embedded_newml:
+  type: MemoryDataset
+
+images_sift_newml:
+  type: MemoryDataset
+
+stored_features_newml:
+  type: MemoryDataset
+
+identified_newml:
+  type: MemoryDataset
+
+results_newml:
+  type: MemoryDataset
+
+notification_newml:
+  type: MemoryDataset

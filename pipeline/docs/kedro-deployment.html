@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kedro Deployment — Wildbook Pipeline</title>
+<link rel="stylesheet" href="https://classless.de/classless-tiny.css">
+</head>
+<body>
+<header>
+  <nav>
+    <ul>
+      <li><strong>Wildbook Pipeline</strong></li>
+      <li><a href="index.html">Overview</a></li>
+      <li><a href="structure.html">Structure</a></li>
+      <li><a href="development.html">Development</a></li>
+      <li><a href="production.html">Production</a></li>
+      <li><a href="configuration.html">Configuration</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main>
+<h1>Kedro Deployment Patterns</h1>
+
+<p>This page covers Kedro's deployment patterns and how they apply to the Wildbook Pipeline. Kedro officially supports both single-machine and distributed deployment strategies.</p>
+
+<h2>Deployment Decision Tree</h2>
+
+<p>Kedro provides a decision framework for choosing the right deployment approach:</p>
+
+<ol>
+  <li>Can your pipeline run on a <strong>single machine</strong>?
+    <ul>
+      <li><strong>Yes &amp; Docker available:</strong> Use container-based deployment</li>
+      <li><strong>Yes &amp; No Docker:</strong> Use CLI or package-based deployment</li>
+    </ul>
+  </li>
+  <li>Need to run across <strong>separate machines</strong>?
+    <ul>
+      <li>Consult the distributed deployment guides for your platform of choice</li>
+    </ul>
+  </li>
+</ol>
+
+<h2>Single-Machine Deployment</h2>
+
+<h3>Container-Based (Docker)</h3>
+
+<p>The recommended approach for reproducible single-machine deployment. Our Wildbook Pipeline uses this pattern:</p>
+
+<pre><code># Dockerfile
+FROM python:3.12-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+RUN pip install --no-cache-dir -e .
+ENV KEDRO_LOGGING_CONFIG=conf/base/logging.yml
+CMD ["kedro", "run"]</code></pre>
+
+<p>Build and run:</p>
+<pre><code>docker build -t wildbook-pipeline .
+docker run wildbook-pipeline
+
+# Or with docker-compose:
+docker compose up -d</code></pre>
+
+<p>Key considerations for Docker deployment:</p>
+<ul>
+  <li>Use <code>ENV</code> to configure <code>KEDRO_LOGGING_CONFIG</code> for container-aware logging</li>
+  <li>Mount data directories as volumes for persistent storage</li>
+  <li>Set <code>KEDRO_CONFIG_LOADER_ARGS</code> to select the correct run environment</li>
+  <li>Leverage multi-stage builds to keep images small</li>
+</ul>
+
+<h3>Package-Based Deployment</h3>
+
+<p>If Docker is not available, deploy the Kedro project as a standard Python package:</p>
+
+<pre><code># Build
+pip install build
+python -m build
+
+# Deploy
+pip install dist/wildbook_pipeline-*.whl
+# Run
+kedro run --pipeline example</code></pre>
+
+<h3>CLI-Based Deployment</h3>
+
+<p>Clone and run directly on the target server:</p>
+<pre><code>git clone &lt;repository-url&gt;
+cd pipeline
+python -m venv venv
+source venv/bin/activate
+pip install -e .
+kedro run --pipeline example</code></pre>
+
+<h2>Distributed Deployment</h2>
+
+<p>Kedro supports integration with several distributed platforms. The Wildbook Pipeline uses Apache Airflow for production scheduling:</p>
+
+<h3>Apache Airflow</h3>
+
+<p>Our production stack uses Airflow with CeleryExecutor. Key files:</p>
+
+<pre><code># Dockerfile.airflow
+FROM apache/airflow:2.10.5-python3.12
+# ... installs Kedro and project dependencies ...
+
+# dags/wildbook_pipeline.py
+from airflow import DAG
+from airflow.operators.bash import BashOperator
+from datetime import datetime
+
+with DAG(
+    dag_id="wildbook_pipeline",
+    schedule="@daily",
+    start_date=datetime(2024, 1, 1),
+    catchup=False,
+) as dag:
+    run_kedro = BashOperator(
+        task_id="run_kedro_pipeline",
+        bash_command="cd /opt/airflow/wildbook-pipeline && kedro run --pipeline example",
+    )</code></pre>
+
+<p>The Airflow stack consists of:</p>
+<ul>
+  <li><strong>PostgreSQL</strong> — Metadata database</li>
+  <li><strong>Redis</strong> — Celery broker and result backend</li>
+  <li><strong>Airflow Webserver</strong> — UI on port 8080</li>
+  <li><strong>Airflow Scheduler</strong> — DAG scheduling</li>
+  <li><strong>Airflow Worker</strong> — Celery task execution</li>
+  <li><strong>Airflow Triggerer</strong> — Deferrable operator support</li>
+</ul>
+
+<h3>Other Supported Platforms</h3>
+
+<p>Kedro provides official deployment guides for these platforms:</p>
+
+<table>
+  <thead><tr><th>Platform</th><th>Use Case</th></tr></thead>
+  <tbody>
+    <tr><td><a href="https://docs.kedro.org/en/stable/deploy/supported-platforms/airflow/">Airflow</a></td><td>Workflow orchestration, scheduling</td></tr>
+    <tr><td><a href="https://docs.kedro.org/en/stable/deploy/supported-platforms/amazon_sagemaker/">Amazon SageMaker</a></td><td>ML training pipelines on AWS</td></tr>
+    <tr><td><a href="https://docs.kedro.org/en/stable/deploy/supported-platforms/aws_step_functions/">AWS Step Functions</a></td><td>Serverless orchestration</td></tr>
+    <tr><td><a href="https://docs.kedro.org/en/stable/deploy/supported-platforms/azure/">Azure</a></td><td>Azure ML integration</td></tr>
+    <tr><td><a href="https://docs.kedro.org/en/stable/deploy/supported-platforms/dagster/">Dagster</a></td><td>Alternative orchestrator</td></tr>
+    <tr><td><a href="https://docs.kedro.org/en/stable/deploy/supported-platforms/databricks/">Databricks</a></td><td>Spark-based execution</td></tr>
+    <tr><td><a href="https://docs.kedro.org/en/stable/deploy/supported-platforms/kubeflow/">Kubeflow Pipelines</a></td><td>Kubernetes-native ML workflows</td></tr>
+    <tr><td><a href="https://docs.kedro.org/en/stable/deploy/supported-platforms/prefect/">Prefect</a></td><td>Modern workflow engine</td></tr>
+    <tr><td><a href="https://docs.kedro.org/en/stable/deploy/supported-platforms/vertexai/">Vertex AI</a></td><td>Google Cloud ML platform</td></tr>
+  </tbody>
+</table>
+
+<p>Legacy support exists for Argo Workflows and AWS Batch, though they have not been tested against recent Kedro releases.</p>
+
+<h2>Hooks in Deployment</h2>
+
+<p>Hooks allow injecting custom behaviour at specific lifecycle points, which is especially useful in production:</p>
+
+<ul>
+  <li><strong>before_pipeline_run / after_pipeline_run</strong> — Add logging, metrics emission, or slack notifications</li>
+  <li><strong>after_catalog_created</strong> — Validate catalog configuration</li>
+  <li><strong>on_node_error / on_pipeline_error</strong> — Alert on failures, send to monitoring systems</li>
+  <li><strong>before_dataset_saved / after_dataset_saved</strong> — Data quality checks, lineage tracking</li>
+</ul>
+
+<p>Register hooks in <code>src/&lt;package_name&gt;/settings.py</code>:</p>
+
+<pre><code># src/wildbook_pipeline/hooks.py
+from kedro.framework.hooks import hook_impl
+
+class MonitoringHooks:
+    @hook_impl
+    def after_pipeline_run(self, run_params, pipeline, catalog):
+        # Send metrics to monitoring system
+        send_metrics(pipeline_name=str(pipeline))
+
+    @hook_impl
+    def on_node_error(self, error, node):
+        # Alert on node failure
+        send_alert(f"Node {node.name} failed: {error}")
+
+# src/wildbook_pipeline/settings.py
+from wildbook_pipeline.hooks import MonitoringHooks
+HOOKS = (MonitoringHooks(),)</code></pre>
+
+<p>Hooks follow LIFO (last-in, first-out) execution order. Auto-discovered hooks from installed plugins run first, followed by project-defined hooks.</p>
+
+<h2>Logging in Deployment</h2>
+
+<p>Kedro uses Python's <code>logging</code> library with Rich formatting by default. Customise for deployment via <code>KEDRO_LOGGING_CONFIG</code>:</p>
+
+<pre><code>export KEDRO_LOGGING_CONFIG=conf/base/logging.yml</code></pre>
+
+<p>Common deployment logging patterns:</p>
+
+<ul>
+  <li><strong>File-based logging:</strong> Add <code>info_file_handler</code> to root handlers (rotating 10MB files)</li>
+  <li><strong>Plain console:</strong> Swap <code>rich</code> handler for <code>console</code> in CI/CD environments</li>
+  <li><strong>DEBUG level:</strong> Change <code>your_python_package.level</code> from INFO to DEBUG for troubleshooting</li>
+  <li><strong>Rich in CI:</strong> Set <code>export COLUMNS=120 LINES=25</code> for proper formatting in CI logs</li>
+</ul>
+
+<h2>Node Grouping for Deployment</h2>
+
+<p>Effective grouping strategies improve deployment manageability:</p>
+
+<ul>
+  <li><strong>By pipeline:</strong> Organise related nodes into separate modular pipelines</li>
+  <li><strong>By tags:</strong> Tag nodes to enable selective execution (<code>kedro run --tags=processing</code>)</li>
+  <li><strong>By namespaces:</strong> Use namespace pipelines (<code>dot.notation</code>) to scope datasets and avoid collisions</li>
+</ul>
+
+<h2>Environment Management</h2>
+
+<p>Use <code>conf/base/</code> for production configuration and override in <code>conf/local/</code> for development. Select the runtime environment via settings:</p>
+
+<pre><code># settings.py
+CONFIG_LOADER_ARGS = {
+    "base_env": "base",
+    "default_run_env": "local",
+}</code></pre>
+
+<h2>Kedro-Viz in Deployment</h2>
+
+<p>Kedro-Viz provides pipeline visualisation and can be run as a standalone service:</p>
+
+<pre><code># Docker-based
+docker compose up -d viz    # runs on port 4141
+
+# Direct
+kedro viz run               # runs on http://localhost:4141</code></pre>
+
+<p>It helps understand pipeline structure, search nodes and datasets, and visualise sub-pipelines via tags.</p>
+
+<h2>Wildbook Pipeline Deployment</h2>
+
+<p>Our project supports two deployment modes:</p>
+
+<table>
+  <thead><tr><th>Mode</th><th>Compose File</th><th>Components</th></tr></thead>
+  <tbody>
+    <tr><td>Development</td><td><code>docker-compose.yml</code></td><td>Kedro runner, Kedro-Viz, Nginx docs</td></tr>
+    <tr><td>Production</td><td><code>docker-compose.prod.yml</code></td><td>Airflow (Postgres, Redis, Webserver, Scheduler, Worker, Triggerer)</td></tr>
+  </tbody>
+</table>
+
+<p>Quick-reference Makefile targets:</p>
+<pre><code># Development
+make docker-up      # Start dev stack
+make viz-up         # Kedro-Viz on :4141
+make docs-up        # Docs on :8080
+
+# Production
+make prod-build     # Build Airflow image
+make prod-init      # Init DB + admin user
+make prod-up        # Start Airflow stack on :8080</code></pre>
+
+<h2>References</h2>
+<ul>
+  <li><a href="https://docs.kedro.org/en/stable/deploy/index.html">Kedro Deployment Guide</a></li>
+  <li><a href="https://docs.kedro.org/en/stable/deploy/single_machine/">Single-Machine Deployment</a></li>
+  <li><a href="https://docs.kedro.org/en/stable/deploy/distributed/">Distributed Deployment</a></li>
+  <li><a href="https://docs.kedro.org/en/stable/deploy/nodes_grouping/">Node Grouping for Deployment</a></li>
+  <li><a href="https://docs.kedro.org/en/stable/extend/hooks/introduction/">Kedro Hooks</a></li>
+  <li><a href="https://docs.kedro.org/en/stable/develop/logging/index.html">Kedro Logging</a></li>
+  <li><a href="https://docs.kedro.org/en/stable/configure/configuration_basics/">Configuration Basics</a></li>
+</ul>
+</main>
+
+<footer><p>Wildbook Pipeline — powered by Kedro</p></footer>
+</body>
+</html>

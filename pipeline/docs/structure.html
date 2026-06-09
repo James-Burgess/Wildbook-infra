@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project Structure — Wildbook Pipeline</title>
+<link rel="stylesheet" href="https://classless.de/classless-tiny.css">
+</head>
+<body>
+<header>
+  <nav>
+    <ul>
+      <li><strong>Wildbook Pipeline</strong></li>
+      <li><a href="index.html">Overview</a></li>
+      <li><a href="structure.html">Structure</a></li>
+      <li><a href="development.html">Development</a></li>
+      <li><a href="production.html">Production</a></li>
+      <li><a href="configuration.html">Configuration</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main>
+<h1>Project Structure</h1>
+
+<pre><code>pipeline/
+├── Makefile                   # Common task shortcuts
+├── Dockerfile                 # Kedro pipeline image
+├── Dockerfile.viz             # Kedro Viz image
+├── Dockerfile.airflow         # Airflow + Kedro image
+├── docker-compose.yml         # Dev services (kedro, viz, docs)
+├── docker-compose.prod.yml    # Production Airflow stack
+├── dags/
+│   └── wildbook_pipeline.py   # Airflow DAG definition
+├── conf/
+│   ├── base/
+│   │   ├── catalog.yml        # Dataset definitions
+│   │   └── parameters.yml     # Pipeline parameters
+│   └── local/                 # Local overrides (gitignored)
+├── data/
+│   └── 01_raw/                # Raw input data
+├── docs/                      # Static documentation (served by nginx)
+├── notebooks/                 # Jupyter notebooks
+├── src/
+│   └── wildbook_pipeline/
+│       └── pipelines/
+│           └── example/       # Example pipeline definition
+├── requirements.txt
+└── pyproject.toml</code></pre>
+
+<h2>Key Files</h2>
+
+<dl>
+  <dt><code>Makefile</code></dt>
+  <dd>All common tasks: install, run, test, lint, docker, prod</dd>
+
+  <dt><code>Dockerfile</code></dt>
+  <dd>Python 3.12-slim image with Kedro installed. Runs <code>kedro run</code> by default.</dd>
+
+  <dt><code>Dockerfile.viz</code></dt>
+  <dd>Same base, runs <code>kedro viz run</code> on port 4141.</dd>
+
+  <dt><code>Dockerfile.airflow</code></dt>
+  <dd>Extends <code>apache/airflow:2.10.5-python3.12</code>. Installs Kedro and datasets. Used by the production stack.</dd>
+
+  <dt><code>docker-compose.yml</code></dt>
+  <dd>Development services: kedro runner, viz UI, docs nginx.</dd>
+
+  <dt><code>docker-compose.prod.yml</code></dt>
+  <dd>Production Airflow stack: postgres, redis, webserver, scheduler, triggerer, worker.</dd>
+
+  <dt><code>dags/wildbook_pipeline.py</code></dt>
+  <dd>Airflow DAG that runs <code>kedro run --pipeline example</code> on a <code>@daily</code> schedule.</dd>
+
+  <dt><code>src/wildbook_pipeline/pipelines/example/</code></dt>
+  <dd>Example pipeline with four nodes: load, preprocess, extract features, generate report.</dd>
+</dl>
+</main>
+
+<footer>
+  <p>Wildbook Pipeline &mdash; powered by Kedro</p>
+</footer>
+</body>
+</html>

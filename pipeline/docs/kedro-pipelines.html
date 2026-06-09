@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kedro Pipelines — Wildbook Pipeline</title>
+<link rel="stylesheet" href="https://classless.de/classless-tiny.css">
+</head>
+<body>
+<header>
+  <nav>
+    <ul>
+      <li><strong>Wildbook Pipeline</strong></li>
+      <li><a href="index.html">Overview</a></li>
+      <li><a href="structure.html">Structure</a></li>
+      <li><a href="development.html">Development</a></li>
+      <li><a href="production.html">Production</a></li>
+      <li><a href="configuration.html">Configuration</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main>
+<h1>Kedro Pipelines: Nodes and Patterns</h1>
+
+<p>Nodes are the building blocks of Kedro pipelines. A <strong>node</strong> is a wrapper for a Python function that names its inputs and outputs. A <strong>pipeline</strong> organises the dependencies and execution order of a collection of nodes.</p>
+
+<h2>Creating Nodes</h2>
+
+<p>A node is created with <code>Node(func, inputs, outputs)</code>. It requires at least one input or output:</p>
+
+<pre><code>from kedro.pipeline import Node
+
+def add(x, y):
+    return x + y
+
+adder_node = Node(func=add, inputs=["a", "b"], outputs="sum")
+adder_node = Node(func=add, inputs=["a", "b"], outputs="sum", name="adding_a_and_b")</code></pre>
+
+<p>The <code>name</code> argument is optional but recommended — it appears in logs and Kedro-Viz:</p>
+
+<pre><code>print(str(adder_node))
+# adding_a_and_b: add([a,b]) -> [sum]</code></pre>
+
+<h2>Node Input/Output Syntax</h2>
+
+<h3>Input Variable Syntax</h3>
+<table>
+  <thead><tr><th>Syntax</th><th>Meaning</th><th>Example Function</th></tr></thead>
+  <tbody>
+    <tr><td><code>None</code></td><td>No input</td><td><code>def f()</code></td></tr>
+    <tr><td><code>'a'</code></td><td>Single input</td><td><code>def f(arg1)</code></td></tr>
+    <tr><td><code>['a', 'b']</code></td><td>Multiple inputs</td><td><code>def f(arg1, arg2)</code></td></tr>
+    <tr><td><code>['a', 'b', 'c']</code></td><td>Variable inputs</td><td><code>def f(arg1, *args)</code></td></tr>
+    <tr><td><code>dict(arg1='x', arg2='y')</code></td><td>Keyword inputs</td><td><code>def f(arg1, arg2)</code></td></tr>
+  </tbody>
+</table>
+
+<h3>Output Variable Syntax</h3>
+<table>
+  <thead><tr><th>Syntax</th><th>Meaning</th><th>Example Return</th></tr></thead>
+  <tbody>
+    <tr><td><code>None</code></td><td>No output</td><td>Does not return</td></tr>
+    <tr><td><code>'a'</code></td><td>Single output</td><td><code>return a</code></td></tr>
+    <tr><td><code>['a', 'b']</code></td><td>List output</td><td><code>return [a, b]</code></td></tr>
+    <tr><td><code>dict(key1='a', key2='b')</code></td><td>Dictionary output</td><td><code>return dict(key1=a, key2=b)</code></td></tr>
+  </tbody>
+</table>
+
+<h2>Running Nodes</h2>
+
+<p>Nodes can be run individually by passing a dictionary of input values:</p>
+
+<pre><code>adder_node.run(dict(a=2, b=3))
+# {'sum': 5}
+
+# Equivalent shorthand
+adder_node(dict(a=2, b=3))</code></pre>
+
+<h2>Advanced Node Patterns</h2>
+
+<h3>*args Nodes</h3>
+<p>For functions that take a variable number of inputs:</p>
+<pre><code>def combine_datasets(*args):
+    # args receives data for all named inputs
+    return do_something(args)
+
+Node(func=combine_datasets, inputs=["df1", "df2", "df3"], outputs="combined")</code></pre>
+
+<h3>**kwargs Nodes</h3>
+<p>When you need to know dataset names at runtime (common for reporting):</p>
+<pre><code>def reporting(**kwargs):
+    result = []
+    for name, data in kwargs.items():
+        res = example_report(name, data)
+        result.append(res)
+    return combined_report(result)
+
+uk_reporting_node = Node(
+    reporting,
+    inputs={"uk_input1": "uk_input1", "uk_input2": "uk_input2"},
+    outputs="uk",
+)</code></pre>
+
+<p>A helper pattern to avoid repeating mappings:</p>
+<pre><code>mapping = lambda x: {k: k for k in x}
+
+uk_reporting_node = Node(
+    reporting,
+    inputs=mapping(["uk_input1", "uk_input2"]),
+    outputs="uk",
+)</code></pre>
+
+<h3>Generator Nodes</h3>
+<p>For large datasets, use Python generators to lazily load/save data. Update <code>catalog.yml</code> with <code>load_args.chunksize</code> and implement a custom dataset with an append-mode <code>_save</code> method:</p>
+
+<pre><code>def make_predictions(X_train, X_test, y_train) -> Generator:
+    model = DecisionTreeClassifier()
+    model.fit(X_train, y_train)
+    for chunk in X_test:
+        y_pred = model.predict(chunk)
+        yield pd.DataFrame(y_pred)</code></pre>
+
+<h3>Preview Functions (Experimental)</h3>
+<p>Preview functions inject debugging/monitoring callbacks. Supported types: <code>MermaidPreview</code> (diagrams), <code>ImagePreview</code> (plots), <code>TextPreview</code> (summaries), and <code>CustomPreview</code>:</p>
+
+<pre><code>from kedro.pipeline.preview_contract import MermaidPreview
+
+def preview_training_model() -> MermaidPreview:
+    return MermaidPreview(
+        content="""
+        flowchart TD
+            A[Load Dataset] --> B[Train Model]
+            B --> C[10 Epochs]
+            C --> D[Status: Completed]
+        """,
+        meta={"framework": "sklearn"}
+    )
+
+node(func=train_model, inputs="data", outputs="metrics",
+     preview_fn=preview_training_model, name="train_node")</code></pre>
+
+<h2>Building Pipelines</h2>
+
+<p>Pipelines resolve dependencies automatically — nodes are <strong>not</strong> necessarily run in declaration order:</p>
+
+<pre><code>from kedro.pipeline import Pipeline, node
+
+pipeline = pipeline([
+    node(func=load_raw_images, inputs="params:images_path", outputs="raw_images", name="load_node"),
+    node(func=preprocess_images, inputs="raw_images", outputs="preprocessed_images", name="preprocess_node"),
+    node(func=extract_features, inputs="preprocessed_images", outputs="features", name="extract_node"),
+    node(func=generate_report, inputs="features", outputs="report", name="report_node"),
+], tags="example")</code></pre>
+
+<h3>Pipeline Utilities</h3>
+<ul>
+  <li><code>pipeline.describe()</code> — Print execution order summary</li>
+  <li><code>pipeline.nodes</code> — Access nodes in topological order</li>
+  <li><code>pipeline.inputs()</code> / <code>pipeline.outputs()</code> — Get pipeline-level I/O</li>
+  <li><code>pipeline.from_inputs()</code> — Slice from specific inputs</li>
+  <li><code>pipeline.to_nodes()</code> — Slice to specific output nodes</li>
+  <li><code>pipeline.only_nodes_with_tags()</code> — Filter by tags</li>
+</ul>
+
+<h2>Tagging</h2>
+
+<p>Tags enable running subsets of pipelines without code changes:</p>
+
+<pre><code># Tag a single node
+Node(func=add, inputs=["a", "b"], outputs="sum", tags="node_tag")
+
+# Tag an entire pipeline (applies to all nodes within)
+pipeline = Pipeline([...], tags="pipeline_tag")
+
+# Run using tags
+kedro run --tags=pipeline_tag
+kedro run --tags=node_tag</code></pre>
+
+<h2>Merging Pipelines</h2>
+
+<p>Multiple pipelines can be combined; their underlying nodes are expanded and merged:</p>
+
+<pre><code>pipeline_all = Pipeline([pipeline_de, pipeline_ds, last_node])
+print(pipeline_all.describe())</code></pre>
+
+<h2>Avoiding Bad Pipelines</h2>
+
+<ul>
+  <li><strong>No-input-no-output nodes:</strong> Invalid — every node must have at least one input or output.</li>
+  <li><strong>Circular dependencies:</strong> Kedro detects and rejects cyclic graphs.</li>
+  <li><strong>Dot notation in names:</strong> Avoid <code>.</code> in dataset/input names — it indicates a namespace pipeline internally. Use <code>_</code> instead.</li>
+</ul>
+
+<h2>Pipeline Registry</h2>
+
+<p>Each pipeline module under <code>pipelines/</code> must expose <code>create_pipeline(**kwargs) -> Pipeline</code>. The registry auto-discovers them:</p>
+
+<pre><code># src/wildbook_pipeline/pipeline_registry.py
+from kedro.framework.project import find_pipelines
+from kedro.pipeline import Pipeline
+
+def register_pipelines() -> dict[str, Pipeline]:
+    pipelines = find_pipelines(raise_errors=True)
+    pipelines["__default__"] = sum(pipelines.values())
+    return pipelines</code></pre>
+
+<h3>Modular Pipelines</h3>
+<p>For larger projects, use modular pipelines — logically isolated, reusable pipeline units stored in separate folders. They are easier to develop, test, and maintain, and can be copied between projects.</p>
+
+<h2>Runners</h2>
+<p>Kedro provides three built-in runners:</p>
+<ul>
+  <li><strong>SequentialRunner</strong> — Executes nodes one-by-one in dependency order</li>
+  <li><strong>ParallelRunner</strong> — Uses multiprocessing for concurrent execution</li>
+  <li><strong>ThreadRunner</strong> — Uses threading for concurrent execution</li>
+</ul>
+
+<h2>Project Code Organization</h2>
+<p>Always create a module under <code>src/&lt;package_name&gt;/pipelines/</code> with a <code>create_pipeline()</code> function. Each pipeline gets its own folder:</p>
+
+<pre><code>src/wildbook_pipeline/pipelines/
+├── __init__.py
+├── data_processing/
+│   ├── __init__.py
+│   ├── nodes.py
+│   └── pipeline.py
+├── data_science/
+│   ├── __init__.py
+│   ├── nodes.py
+│   └── pipeline.py
+└── example/
+    ├── __init__.py
+    └── nodes.py</code></pre>
+
+<h2>References</h2>
+<ul>
+  <li><a href="https://docs.kedro.org/en/stable/build/nodes/">Kedro Nodes Documentation</a></li>
+  <li><a href="https://docs.kedro.org/en/stable/build/pipeline_introduction/">Kedro Pipeline Introduction</a></li>
+  <li><a href="https://docs.kedro.org/en/stable/build/modular_pipelines/">Modular Pipelines</a></li>
+  <li><a href="https://docs.kedro.org/en/stable/build/slice_a_pipeline/">Pipeline Slicing</a></li>
+  <li><a href="https://docs.kedro.org/en/stable/build/run_a_pipeline/">Running Pipelines</a></li>
+</ul>
+</main>
+
+<footer><p>Wildbook Pipeline — powered by Kedro</p></footer>
+</body>
+</html>

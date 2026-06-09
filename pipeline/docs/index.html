@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wildbook Pipeline</title>
+<link rel="stylesheet" href="https://classless.de/classless-tiny.css">
+</head>
+<body>
+<header>
+  <nav>
+    <ul>
+      <li><strong>Wildbook Pipeline</strong></li>
+      <li><a href="index.html">Overview</a></li>
+      <li><a href="structure.html">Structure</a></li>
+      <li><a href="development.html">Development</a></li>
+      <li><a href="production.html">Production</a></li>
+      <li><a href="configuration.html">Configuration</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main>
+<h1>Wildbook Pipeline</h1>
+
+<p>Data pipeline for wildlife image analysis and identification, built with <a href="https://kedro.org">Kedro</a>.</p>
+
+<p>This project processes wildlife images through a series of pipeline stages: raw data ingestion, preprocessing, feature extraction, and reporting.</p>
+
+<p>Two deployment modes are available:</p>
+<ul>
+  <li><strong>Development</strong> — lightweight <code>docker-compose.yml</code> with Kedro, Viz, and docs</li>
+  <li><strong>Production</strong> — <code>docker-compose.prod.yml</code> with Apache Airflow (CeleryExecutor)</li>
+</ul>
+
+<h2>Prerequisites</h2>
+<ul>
+  <li>Python 3.10+</li>
+  <li>Docker &amp; Docker Compose</li>
+</ul>
+
+<h2>Quick Start</h2>
+
+<pre><code># Create venv and install dependencies
+make install
+
+# Run the pipeline
+make run
+
+# View the pipeline in Kedro Viz
+make viz-up
+# Then open http://localhost:4141</code></pre>
+</main>
+
+<footer>
+  <p>Wildbook Pipeline &mdash; powered by Kedro</p>
+</footer>
+</body>
+</html>

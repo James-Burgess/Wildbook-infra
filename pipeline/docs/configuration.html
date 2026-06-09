@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Configuration — Wildbook Pipeline</title>
+<link rel="stylesheet" href="https://classless.de/classless-tiny.css">
+</head>
+<body>
+<header>
+  <nav>
+    <ul>
+      <li><strong>Wildbook Pipeline</strong></li>
+      <li><a href="index.html">Overview</a></li>
+      <li><a href="structure.html">Structure</a></li>
+      <li><a href="development.html">Development</a></li>
+      <li><a href="production.html">Production</a></li>
+      <li><a href="configuration.html">Configuration</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main>
+<h1>Configuration</h1>
+
+<p>Environment-specific configuration lives in <code>conf/base/</code> with local overrides in <code>conf/local/</code>.</p>
+
+<h2>Data Catalog</h2>
+
+<p><code>conf/base/catalog.yml</code> defines all datasets used by the pipeline:</p>
+
+<pre><code>raw_images:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/images.csv
+
+preprocessed_images:
+  type: pandas.CSVDataset
+  filepath: data/02_intermediate/preprocessed_images.csv
+
+features:
+  type: pandas.CSVDataset
+  filepath: data/03_primary/features.csv
+
+report:
+  type: pandas.CSVDataset
+  filepath: data/04_report/report.csv</code></pre>
+
+<p>Each dataset maps to a CSV file in the <code>data/</code> directory. Kedro automatically loads and saves these as pandas DataFrames.</p>
+
+<h2>Parameters</h2>
+
+<p><code>conf/base/parameters.yml</code> stores pipeline parameters:</p>
+
+<pre><code>images_path: data/01_raw/images.csv</code></pre>
+
+<p>Parameters are accessible in nodes via <code>params:&lt;key&gt;</code> syntax in the pipeline definition.</p>
+
+<h2>Local Overrides</h2>
+
+<p>Place environment-specific overrides in <code>conf/local/</code>. These files are gitignored and should contain:</p>
+
+<ul>
+  <li><code>credentials.yml</code> — API keys, database passwords, secrets</li>
+  <li>Any catalog or parameter overrides for your local environment</li>
+</ul>
+
+<h2>Kedro Settings</h2>
+
+<p><code>src/wildbook_pipeline/settings.py</code> controls Kedro's runtime behavior:</p>
+
+<ul>
+  <li><code>CONFIG_LOADER_ARGS</code> — sets <code>base_env</code> to <code>base</code> and <code>default_run_env</code> to <code>local</code></li>
+  <li><code>CONF_SOURCE</code> — defaults to <code>conf</code></li>
+  <li>Hook registration, session class, and catalog class can be customized here</li>
+</ul>
+
+<h2>Pipeline Registration</h2>
+
+<p><code>src/wildbook_pipeline/pipeline_registry.py</code> discovers and registers all pipelines. The <code>__default__</code> pipeline is the sum of all discovered pipelines.</p>
+
+<p>To add a new pipeline, create a module under <code>src/wildbook_pipeline/pipelines/</code> with a <code>create_pipeline()</code> function. Kedro auto-discovers it.</p>
+</main>
+
+<footer>
+  <p>Wildbook Pipeline &mdash; powered by Kedro</p>
+</footer>
+</body>
+</html>

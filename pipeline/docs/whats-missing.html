@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What's Missing — Wildbook Pipeline</title>
+<style>
+  /* classless-tiny-alike minimal styles */
+  body {
+    max-width: 80ch;
+    margin: 0 auto;
+    padding: 1rem;
+    font-family: system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
+    color: #222;
+  }
+  header { border-bottom: 2px solid #ccc; padding-bottom: 0.5rem; margin-bottom: 1.5rem; }
+  nav ul { list-style: none; padding: 0; display: flex; gap: 1.5rem; flex-wrap: wrap; }
+  nav a { text-decoration: none; color: #0366d6; }
+  nav a:hover { text-decoration: underline; }
+  h1 { font-size: 1.8rem; }
+  h2 { font-size: 1.4rem; border-bottom: 1px solid #ddd; padding-bottom: 0.2rem; margin-top: 2rem; }
+  h3 { font-size: 1.1rem; }
+  .gap-section { margin-bottom: 2.5rem; }
+  .gap-item { padding: 0.75rem; margin: 0.5rem 0; border-left: 3px solid #eee; }
+  .gap-item.missing { border-left-color: #d73a49; background: #fff5f5; }
+  .gap-item.partial { border-left-color: #dbab09; background: #fffef0; }
+  .gap-item.ok { border-left-color: #28a745; background: #f0fff4; }
+  .badge { display: inline-block; padding: 0.15em 0.5em; font-size: 0.75rem; font-weight: bold;
+           border-radius: 3px; text-transform: uppercase; vertical-align: middle; }
+  .badge-red { background: #d73a49; color: white; }
+  .badge-yellow { background: #dbab09; color: #333; }
+  .badge-green { background: #28a745; color: white; }
+  details { margin: 0.5rem 0; }
+  details summary { cursor: pointer; font-weight: 600; color: #0366d6; }
+  pre { background: #f6f8fa; padding: 0.5rem; border-radius: 4px; overflow-x: auto; font-size: 0.85rem; }
+  code { background: #f0f0f0; padding: 0.1em 0.3em; border-radius: 3px; font-size: 0.9em; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #ddd; }
+  th { background: #f6f8fa; }
+  footer { margin-top: 3rem; border-top: 2px solid #ccc; padding-top: 1rem; font-size: 0.85rem; color: #666; }
+</style>
+</head>
+<body>
+<header>
+  <nav>
+    <ul>
+      <li><strong>Wildbook Pipeline</strong></li>
+      <li><a href="index.html">Overview</a></li>
+      <li><a href="structure.html">Structure</a></li>
+      <li><a href="development.html">Development</a></li>
+      <li><a href="production.html">Production</a></li>
+      <li><a href="configuration.html">Configuration</a></li>
+    </ul>
+  </nav>
+</header>
+<main>
+  <h1>What's Missing</h1>
+
+  <p>
+    Based on <a href="https://docs.kedro.org/en/stable/create/starters/">Kedro starter conventions</a>,
+    <a href="https://docs.kedro.org/en/stable/configure/configuration_basics/">configuration best practices</a>,
+    <a href="https://docs.kedro.org/en/stable/deploy/single_machine/">deployment guidelines</a>,
+    and production Python data project standards, here is what a well-structured Kedro project
+    would include that the current <code>wildbook_pipeline</code> does not yet have.
+  </p>
+
+  <!-- ============================================================ -->
+  <!-- 1. PROJECT SETUP & SCAFFOLDING -->
+  <!-- ============================================================ -->
+  <div class="gap-section">
+    <h2>1. Project Setup &amp; Scaffolding</h2>
+    <p>
+      A Kedro project created from an <a href="https://docs.kedro.org/en/stable/create/starters/">official starter</a>
+      (e.g. <code>spaceflights-pandas</code>) includes a richer baseline than <code>kedro new</code> alone.
+      Starters are <a href="https://cookiecutter.readthedocs.io/">Cookiecutter</a> templates that bundle tests,
+      CI configs, and environment-aware configuration from day one.
+    </p>
+
+    <div class="gap-item missing">
+      <span class="badge badge-red">MISSING</span>
+      <strong>.dockerignore</strong> &mdash;
+      Prevents sending <code>venv/</code>, <code>__pycache__/</code>, <code>data/</code>, and IDE files
+      into the Docker build context. Without it, every <code>COPY . .</code> in the Dockerfiles
+      includes hundreds of megabytes of unnecessary files, making builds slow and images large.
+      <details>
+        <summary>Suggested .dockerignore</summary>
+<pre>
+venv/
+.git/
+.viz/
+data/
+logs/
+__pycache__/
+*.pyc
+*.egg-info/
+.ipynb_checkpoints/
+.DS_Store
+.idea/
+.vscode/
+*.log
+</pre>
+      </details>
+    </div>
+
+    <div class="gap-item missing">
+      <span class="badge badge-red">MISSING</span>
+      <strong>.pre-commit-config.yaml</strong> &mdash;
+      Pre-commit hooks for auto-formatting, linting, and import sorting on every commit.
+      Standard in Kedro starter templates.
+      <details>
+        <summary>Suggested .pre-commit-config.yaml</summary>
+<pre>
+repos:
+  - repo: https://github.com/psf/black
+    rev: 24.4.0
+    hooks:
+      - id: black
+        language_version: python3.12
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: [--profile, black]
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+</pre>
+      </details>
+    </div>
+
+    <div class="gap-item missing">
+      <span class="badge badge-red">MISSING</span>
+      <strong>setup.cfg</strong> (or <code>[tool.flake8]</code> in <code>pyproject.toml</code>) &mdash;
+      Flake8 and isort configuration for consistent linting. The Makefile <code>lint</code> target
+      runs <code>flake8 src/</code> but there is no configuration file controlling which
+      rules are enforced or ignored.
+    </div>
+
+    <div class="gap-item missing">
+      <span class="badge badge-red">MISSING</span>
+      <strong>LICENSE</strong> &mdash;
+      Standard for any open-source or shared project. Missing from the repo entirely.
+    </div>
+
+    <div class="gap-item missing">
+      <span class="badge badge-red">MISSING</span>
+      <strong>py.typed</strong> marker file &mdash;
+      Placed at <code>src/wildbook_pipeline/py.typed</code> to declare that the package
+      supports PEP 561 type hints, enabling downstream type checkers.
+    </div>
+
+    <div class="gap-item partial">
+      <span class="badge badge-yellow">INCOMPLETE</span>
+      <strong>requirements.txt</strong> &mdash;
+      Only 6 packages listed with loose version specifiers. A production project should:
+      <ul>
+        <li>Pin exact versions with hashes in <code>requirements.txt</code></li>
+        <li>Maintain separate <code>requirements-dev.txt</code> for dev tools (black, flake8, mypy, pre-commit)</li>
+        <li>Use <code>pip-compile</code> (pip-tools) from a <code>requirements.in</code> for reproducible builds</li>
+        <li>Dockerfile references <code>kedro-datasets[pandas]</code> but <code>pyproject.toml</code> does not list it in <code>[project] dependencies</code></li>
+      </ul>
+    </div>
+
+    <div class="gap-item partial">
+      <span class="badge badge-yellow">INCOMPLETE</span>
+      <strong>CHANGELOG.md</strong> &mdash;
+      Important for tracking breaking changes in a production data project.
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- 2. CONFIGURATION -->
+  <!-- ============================================================ -->
+  <div class="gap-section">
+    <h2>2. Configuration</h2>
+    <p>
+      Kedro uses the <a href="https://docs.kedro.org/en/stable/configure/configuration_basics/">OmegaConfigLoader</a>
+      (OmegaConf-based) to load config from <code>conf/</code> following specific naming patterns.
+      The loader recursively scans <code>conf/base</code> first, then <code>conf/local</code> (the default
+      overriding environment), merging the results. Configuration files are matched by patterns:
+      <code>"catalog"</code>, <code>"parameters"</code>, <code>"credentials"</code>, and <code>"logging"</code>.
+    </p>
+
+    <div class="gap-item missing">
+      <span class="badge badge-red">MISSING / BUG</span>
+      <strong>conf/base/logging.yml</strong> &mdash;
+      Every Kedro project should have a logging configuration file. <strong>More importantly,
+      the Dockerfile references this file:</strong>
+      <pre>ENV KEDRO_LOGGING_CONFIG=conf/base/logging.yml</pre>
+      The file <strong>does not exist</strong> in the repository, which will cause errors at runtime.
+      Both <code>Dockerfile</code> and <code>Dockerfile.airflow</code> set this environment variable.
+      <details>
+        <summary>Minimal logging.yml (for conf/base/)</summary>
+<pre>
+version: 1
+disable_existing_loggers: false
+formatters:
+  simple:
+    format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: INFO
+    formatter: simple
+    stream: ext://sys.stdout
+loggers:
+  kedro:
+    level: INFO
+    handlers: [console]
+    propagate: false
+root:
+  level: INFO
+  handlers: [console]
+</pre>
+      </details>
+    </div>
+
+    <div class="gap-item missing">
+      <span class="badge badge-red">MISSING</span>
+      <strong>Environment-specific configuration (conf/prod/, conf/test/)</strong> &mdash;
+      Kedro
+      <a href="https://docs.kedro.org/en/stable/configure/configuration_basics/#how-to-specify-additional-configuration-environments">supports arbitrary configuration environments</a>.
+      A production project typically has:
+      <ul>
+        <li><code>conf/prod/parameters.yml</code> &mdash; production-specific overrides (batch sizes, memory limits, cloud paths)</li>
+        <li><code>conf/test/parameters.yml</code> &mdash; test-specific overrides (smaller datasets, mock endpoints)</li>
+        <li><code>conf/dev/parameters.yml</code> &mdash; development-specific config</li>
+      </ul>
+      Currently only <code>base</code> (foundation) and <code>local</code> (gitignored overrides) exist.
+      You can use these with <code>kedro run --env=prod</code> or set <code>KEDRO_ENV=prod</code>.
+    </div>
+
+    <div class="gap-item partial">
+      <span class="badge badge-yellow">MINIMAL</span>
+      <strong>conf/base/parameters.yml</strong> &mdash;
+      Contains a single parameter (<code>images_path</code>). A real pipeline should have:
+      model hyperparameters, batch sizes, feature extraction parameters, output paths,
+      and runtime flags. Consider splitting into <code>parameters_data.yml</code>,
+      <code>parameters_model.yml</code>, etc. as the
+      <a href="https://docs.kedro.org/en/stable/configure/configuration_basics/#configuration-patterns">config patterns</a>
+      support <code>parameters*</code> wildcards.
+    </div>
+
+    <div class="gap-item missing">
+      <span class="badge badge-red">MISSING</span>
+      <strong>conf/base/credentials.yml</strong> &mdash;
+      Kedro's config loader looks for credentials files matching <code>credentials*</code>
+      patterns. Having at least a stub in <code>base</code> (with no real secrets) documents
+      the expected credential structure. Real secrets go in <code>local</code> (gitignored).
+    </div>
+
+    <div class="gap-item missing">
+      <span class="badge badge-red">MISSING</span>
+      <strong>Remote configuration support</strong> &mdash;
+      Kedro <a href="https://docs.kedro.org/en/stable/configure/configuration_basics/#how-to-read-configuration-from-remote-storage">supports loading config from S3, GCS, Azure Blob</a>.
+      For a production Airflow deployment, consider storing <code>conf/prod/</code> on
+      cloud storage so that config can be updated without redeploying containers.
+      <pre>kedro run --conf-source=s3://my-bucket/configs/</pre>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- 3. TESTING -->
+  <!-- ============================================================ -->
+  <div class="gap-section">
+    <h2>3. Testing</h2>
+
+    <div class="gap-item missing">
+      <span class="badge badge-red">MISSING</span>
+      <strong>tests/ directory</strong> &mdash;
+      The project has <strong>zero tests</strong>. Every Kedro starter includes a
+      <code>tests/</code> directory with at least:
+      <ul>
+        <li><code>tests/test_pipelines.py</code> &mdash; pipeline registration tests</li>
+        <li><code>tests/test_nodes.py</code> &mdash; unit tests for individual node functions</li>
+        <li><code>tests/conftest.py</code> &mdash; shared fixtures (catalog, config, dummy data)</li>
+        <li><code>tests/test_config.py</code> &mdash; config loading validation</li>
+      </ul>
+      The Makefile <code>test</code> target runs <code>kedro test</code> which expects
+      a <code>tests/</code> directory with pytest fixtures.
+      <details>
+        <summary>Minimal test structure</summary>
+<pre>
+tests/
+├── conftest.py              # Pytest fixtures (dummy catalog, project context)
+├── test_pipelines.py        # Pipeline structure tests
+└── pipelines/
+    └── example/
+        └── test_nodes.py    # Unit tests for each node function
+</pre>
+      </details>
+    </div>
+
+    <div class="gap-item missing">
+      <span class="badge badge-red">MISSING</span>
+      <strong>CI/CD pipeline configuration</strong> &mdash;
+      No <code>.github/workflows/</code>, no <code>.gitlab-ci.yml</code>, no Jenkinsfile.
+      A production project should have automated test runs on every PR, with linting,
+      type checking, and integration tests.
+    </div>
+
+    <div class="gap-item missing">
+      <span class="badge badge-red">MISSING</span>
+      <strong>Code coverage tooling</strong> &mdash;
+      The <code>.gitignore</code> already ignores <code>.coverage</code>, <code>htmlcov/</code>,
+      and <code>coverage.xml</code>, but there is no <code>pytest-cov</code> or
+      <code>coverage</code> dependency, nor any coverage configuration.
+      Add <code>pytest-cov</code> to dev requirements and <code>[tool.coverage]</code> to
+      <code>pyproject.toml</code>.
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- 4. PACKAGING & DEPLOYMENT -->
+  <!-- ============================================================ -->
+  <div class="gap-section">
+    <h2>4. Packaging &amp; Deployment</h2>
+    <p>
+      Kedro recommends <a href="https://docs.kedro.org/en/stable/deploy/single_machine/#container-based">container-based deployment</a>
+      (which this project has), but also supports
+      <a href="https://docs.kedro.org/en/stable/deploy/single_machine/#package-based">package-based deployment</a>
+      via <code>kedro package</code> for distributing <code>.whl</code> files.
+      The official docs also suggest the
+      <a href="https://github.com/kedro-org/kedro-plugins/tree/main/kedro-docker">Kedro-Docker plugin</a>
+      for streamlined Docker workflows.
+    </p>
+
+    <div class="gap-item missing">
+      <span class="badge badge-red">MISSING</span>
+      <strong>kedro-docker plugin</strong> &mdash;
+      The <a href="https://docs.kedro.org/en/stable/deploy/single_machine/#container-based">official Kedro docs recommend using the Kedro-Docker plugin</a>
+      for streamlined Docker workflows. It auto-generates optimized Dockerfiles,
+      manages entrypoints, and integrates with <code>kedro package</code>.
+      <pre># Add to requirements.txt:
+kedro-docker>=0.5.0</pre>
+    </div>
+
+    <div class="gap-item missing">
+      <span class="badge badge-red">MISSING</span>
+      <strong>kedro package workflow</strong> &mdash;
+      The <code>kedro package</code> command builds a <code>.whl</code> file containing
+      pipeline source code and a <code>tar.gz</code> with configuration (excluding
+      <code>conf/local/</code>). The current Dockerfile uses <code>pip install -e .</code>
+      which is a development install, not a proper packaged distribution. The
+      <a href="https://docs.kedro.org/en/stable/deploy/single_machine/#package-based">packaging docs</a>
+      recommend <code>kedro package</code> for production distributions.
+    </div>
+
+    <div class="gap-item missing">
+      <span class="badge badge-red">MISSING</span>
+      <strong>Multi-stage Dockerfile</strong> &mdash;
+      The production Dockerfile does a single-stage build with <code>pip install -e .</code>
+      and includes all source and build tools in the final image. A multi-stage build
+      would produce a smaller, more secure image by separating build dependencies
+      from runtime dependencies.
+    </div>
+
+    <div class="gap-item missing">
+      <span class="badge badge-red">MISSING</span>
+      <strong>Health checks for the Kedro container</strong> &mdash;
+      The <code>docker-compose.prod.yml</code> includes health checks for Airflow,
+      Postgres, and Redis services but not for the Kedro pipeline container itself.
+    </div>
+
+    <div class="gap-item partial">
+      <span class="badge badge-yellow">INCOMPLETE</span>
+      <strong>Makefile clean target</strong> &mdash;
+      The <code>clean</code> target removes <code>data/</code> which could accidentally
+      delete valuable data. A safer approach is to only clean <code>data/02_intermediate/</code>
+      and <code>data/03_primary/</code> (Kedro's convention for transient outputs).
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- 5. CODE QUALITY & TYPE SAFETY -->
+  <!-- ============================================================ -->
+  <div class="gap-section">
+    <h2>5. Code Quality &amp; Type Safety</h2>
+
+    <div class="gap-item missing">
+      <span class="badge badge-red">MISSING</span>
+      <strong>mypy / type checker configuration</strong> &mdash;
+      The pipeline only uses <code>from __future__ import annotations</code> in a few files.
+      There is no <code>[tool.mypy]</code> section in <code>pyproject.toml</code> and no
+      <code>mypy</code> in requirements.
+      <details>
+        <summary>Suggested [tool.mypy] config</summary>
+<pre>
+[tool.mypy]
+python_version = "3.10"
+strict = false
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+exclude = ["venv/", "build/"]
+</pre>
+      </details>
+    </div>
+
+    <div class="gap-item missing">
+      <span class="badge badge-red">MISSING</span>
+      <strong>Black formatter config in pyproject.toml</strong> &mdash;
+      The project uses Flake8 and isort for linting but has no auto-formatter configured.
+      Add <code>[tool.black]</code> to <code>pyproject.toml</code>:
+      <pre>
+[tool.black]
+line-length = 88
+target-version = ["py310"]</pre>
+    </div>
+
+    <div class="gap-item missing">
+      <span class="badge badge-red">MISSING</span>
+      <strong>isort config in pyproject.toml</strong> &mdash;
+      The Makefile runs <code>isort --profile black src/</code> but there's no
+      <code>[tool.isort]</code> in <code>pyproject.toml</code> to make the config
+      explicit and IDE-friendly.
+      <pre>
+[tool.isort]
+profile = "black"
+line_length = 88</pre>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- 6. OBSERVABILITY & MONITORING -->
+  <!-- ============================================================ -->
+  <div class="gap-section">
+    <h2>6. Observability &amp; Monitoring</h2>
+
+    <div class="gap-item missing">
+      <span class="badge badge-red">MISSING</span>
+      <strong>Structured logging</strong> &mdash;
+      The missing <code>conf/base/logging.yml</code> means there is no logging configuration.
+      A production pipeline should log run metadata: pipeline name, node execution times,
+      dataset sizes, and error details. Consider adding JSON-format logging for
+      ingestion into log aggregators (e.g. ELK, Datadog).
+    </div>
+
+    <div class="gap-item missing">
+      <span class="badge badge-red">MISSING</span>
+      <strong>Pipeline metrics / hooks</strong> &mdash;
+      Kedro supports <a href="https://docs.kedro.org/en/stable/hooks/introduction/">project hooks</a>
+      for instrumentation. There is no <code>hooks.py</code> file in <code>src/wildbook_pipeline/</code>.
+      Consider adding hooks for:
+      <ul>
+        <li>Node execution timing (performance monitoring)</li>
+        <li>Dataset I/O statistics (rows processed, file sizes)</li>
+        <li>Pipeline run status notifications (Slack, email)</li>
+        <li>Error tracking integration (Sentry)</li>
+      </ul>
+    </div>
+
+    <div class="gap-item missing">
+      <span class="badge badge-red">MISSING</span>
+      <strong>Run tracking / experiment lineage</strong> &mdash;
+      No integration with MLflow, Weights & Biases, or Kedro's built-in run tracking
+      for experiment tracking and artifact lineage across pipeline runs.
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- 7. DOCUMENTATION -->
+  <!-- ============================================================ -->
+  <div class="gap-section">
+    <h2>7. Documentation</h2>
+
+    <div class="gap-item partial">
+      <span class="badge badge-yellow">INCOMPLETE</span>
+      <strong>Pipeline documentation</strong> &mdash;
+      The existing <code>docs/</code> directory has good static HTML pages covering the
+      architecture, but there is no:
+      <ul>
+        <li>API documentation generated from docstrings (Sphinx / MkDocs with mkdocstrings)</li>
+        <li>Data schema documentation for the CSVs flowing between nodes</li>
+        <li>Kedro-Viz embedded pipeline diagram</li>
+        <li>Troubleshooting guide / FAQ</li>
+      </ul>
+    </div>
+
+    <div class="gap-item missing">
+      <span class="badge badge-red">MISSING</span>
+      <strong>docstrings in node functions</strong> &mdash;
+      The <code>src/wildbook_pipeline/pipelines/example/nodes.py</code> file has four
+      functions with zero docstrings. Every node function should document its
+      inputs, outputs, transformation logic, and any side effects.
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- 8. SECURITY -->
+  <!-- ============================================================ -->
+  <div class="gap-section">
+    <h2>8. Security</h2>
+
+    <div class="gap-item missing">
+      <span class="badge badge-red">MISSING</span>
+      <strong>Secrets management</strong> &mdash;
+      The <code>.env.example</code> is minimal and <code>docker-compose.prod.yml</code>
+      hardcodes passwords (<code>POSTGRES_PASSWORD: airflow</code>, hardcoded Airflow
+      webserver secret key). A production setup should use Docker secrets, Kubernetes
+      secrets, or a secrets manager (AWS Secrets Manager, HashiCorp Vault).
+    </div>
+
+    <div class="gap-item missing">
+      <span class="badge badge-red">MISSING</span>
+      <strong>Dependency vulnerability scanning</strong> &mdash;
+      No <code>pip-audit</code>, <code>safety</code>, or Dependabot configuration.
+      Dependencies should be scanned regularly for known CVEs, especially for a
+      production Airflow deployment.
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- 9. DATA MANAGEMENT -->
+  <!-- ============================================================ -->
+  <div class="gap-section">
+    <h2>9. Data Management</h2>
+
+    <div class="gap-item missing">
+      <span class="badge badge-red">MISSING</span>
+      <strong>Data versioning</strong> &mdash;
+      No integration with DVC, Delta Lake, or Kedro's dataset versioning. Raw data
+      in <code>data/01_raw/</code> has no version tracking, making it difficult to
+      reproduce results across pipeline runs.
+    </div>
+
+    <div class="gap-item missing">
+      <span class="badge badge-red">MISSING</span>
+      <strong>Data validation / Great Expectations</strong> &mdash;
+      No schema validation for input/output datasets. Kedro integrates with
+      data quality tools for validating pipeline inputs and outputs (checking
+      column types, null rates, value ranges, etc.).
+    </div>
+
+    <div class="gap-item partial">
+      <span class="badge badge-yellow">INCOMPLETE</span>
+      <strong>Catalog dataset types</strong> &mdash;
+      All four datasets in <code>conf/base/catalog.yml</code> use the same
+      <code>pandas.CSVDataset</code> type with local filepaths. For production
+      (especially with Airflow/Celery distributed workers), consider:
+      <ul>
+        <li>Cloud storage backends (<code>pandas.S3Dataset</code>, <code>pandas.GCSDataset</code>)</li>
+        <li>Partitioned datasets for large data (<code>kedro.io.PartitionedDataset</code>)</li>
+        <li>Incremental dataset loading for checkpoint/resume workflows</li>
+        <li>Adding <code>layer</code> tags (raw, intermediate, primary, reporting) for catalog organization</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- 10. AIRFLOW DEPLOYMENT GAPS -->
+  <!-- ============================================================ -->
+  <div class="gap-section">
+    <h2>10. Airflow Deployment Gaps</h2>
+
+    <div class="gap-item missing">
+      <span class="badge badge-red">MISSING</span>
+      <strong>Kedro-Airflow integration plugin</strong> &mdash;
+      The <code>dags/wildbook_pipeline.py</code> manually wraps Kedro in a BashOperator.
+      Kedro offers an official <code>kedro-airflow</code> plugin that auto-generates
+      Airflow DAGs from your pipeline nodes, supporting proper error handling and retries
+      at the node level instead of the entire pipeline level.
+    </div>
+
+    <div class="gap-item missing">
+      <span class="badge badge-red">MISSING</span>
+      <strong>Airflow Variables/Connections config</strong> &mdash;
+      The Airflow DAG should use Airflow Variables and Connections for configuration
+      instead of relying entirely on <code>conf/</code> yaml files. This enables
+      dynamic configuration changes from the Airflow UI.
+    </div>
+
+    <div class="gap-item missing">
+      <span class="badge badge-red">MISSING</span>
+      <strong>Airflow Fernet key</strong> &mdash;
+      <code>AIRFLOW__CORE__FERNET_KEY: ""</code> is set to empty in
+      <code>docker-compose.prod.yml</code>. This should be a generated key for
+      encrypting connection secrets.
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- SUMMARY -->
+  <!-- ============================================================ -->
+  <div class="gap-section">
+    <h2>Summary &amp; Priority</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Priority</th>
+          <th>Item</th>
+          <th>Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badge-red">CRITICAL</span></td>
+          <td><strong>conf/base/logging.yml</strong></td>
+          <td>Referenced by Dockerfiles but missing &mdash; runtime error</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-red">CRITICAL</span></td>
+          <td><strong>tests/ directory</strong></td>
+          <td>Zero test coverage for a production data pipeline</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-red">CRITICAL</span></td>
+          <td><strong>.dockerignore</strong></td>
+          <td>Prevents huge, slow Docker builds with venv and data</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-red">HIGH</span></td>
+          <td><strong>CI/CD pipeline</strong></td>
+          <td>No automated testing or linting on PRs</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-red">HIGH</span></td>
+          <td><strong>.pre-commit-config.yaml</strong></td>
+          <td>Ensures consistent code quality before commits</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-red">HIGH</span></td>
+          <td><strong>kedro-airflow plugin</strong></td>
+          <td>Proper node-level DAG generation for Airflow</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-yellow">MEDIUM</span></td>
+          <td><strong>Environment configs (prod, test)</strong></td>
+          <td>Enables environment-specific configuration overrides per Kedro convention</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-yellow">MEDIUM</span></td>
+          <td><strong>Project hooks (hooks.py)</strong></td>
+          <td>Observability, timing, and error tracking</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-yellow">MEDIUM</span></td>
+          <td><strong>Type hints + mypy + black config</strong></td>
+          <td>Catches bugs before runtime; consistent formatting</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-yellow">MEDIUM</span></td>
+          <td><strong>Secrets management</strong></td>
+          <td>Currently hardcodes passwords in docker-compose files</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-green">LOW</span></td>
+          <td><strong>LICENSE, CHANGELOG</strong></td>
+          <td>Important for collaboration but not blocking execution</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-green">LOW</span></td>
+          <td><strong>Data versioning (DVC)</strong></td>
+          <td>Useful for reproducibility but can be added incrementally</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <hr>
+  <h3>References from Kedro Documentation</h3>
+  <ul>
+    <li><a href="https://docs.kedro.org/en/stable/create/starters/">Kedro Starters</a> &mdash; Official starter templates (Cookiecutter-based) and what they include out of the box</li>
+    <li><a href="https://docs.kedro.org/en/stable/configure/configuration_basics/">Configuration Basics</a> &mdash; OmegaConfigLoader, configuration environments (<code>base</code>/<code>local</code>/custom), naming patterns, remote config support</li>
+    <li><a href="https://docs.kedro.org/en/stable/deploy/single_machine/">Single-Machine Deployment</a> &mdash; Container-based, package-based (<code>kedro package</code>), and CLI-based deployment methods</li>
+    <li><a href="https://docs.kedro.org/en/stable/hooks/introduction/">Hooks</a> &mdash; Pipeline lifecycle hooks for instrumentation, monitoring, and custom behavior</li>
+    <li><a href="https://cookiecutter.readthedocs.io/">Cookiecutter</a> &mdash; Template engine used by Kedro starters</li>
+    <li><a href="https://github.com/kedro-org/kedro-starters/tree/main/spaceflights-pandas">spaceflights-pandas starter</a> &mdash; Complete reference Kedro project</li>
+    <li><a href="https://github.com/kedro-org/kedro-plugins/tree/main/kedro-docker">kedro-docker plugin</a> &mdash; Official Docker integration for Kedro</li>
+    <li><a href="https://github.com/kedro-org/kedro-plugins/tree/main/kedro-airflow">kedro-airflow plugin</a> &mdash; Official Airflow integration for Kedro</li>
+  </ul>
+</main>
+<footer><p>Wildbook Pipeline &mdash; powered by Kedro | <a href="whats-missing.html">What's Missing</a></p></footer>
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Production — Wildbook Pipeline</title>
+<link rel="stylesheet" href="https://classless.de/classless-tiny.css">
+</head>
+<body>
+<header>
+  <nav>
+    <ul>
+      <li><strong>Wildbook Pipeline</strong></li>
+      <li><a href="index.html">Overview</a></li>
+      <li><a href="structure.html">Structure</a></li>
+      <li><a href="development.html">Development</a></li>
+      <li><a href="production.html">Production</a></li>
+      <li><a href="configuration.html">Configuration</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main>
+<h1>Production</h1>
+
+<p>The production stack uses Apache Airflow with CeleryExecutor for scheduled, distributed pipeline execution.</p>
+
+<h2>Deployment</h2>
+
+<pre><code># Build the Airflow image
+make prod-build
+
+# Initialize the database and create admin user
+make prod-init
+
+# Start the stack
+make prod-up</code></pre>
+
+<p>Open <a href="http://localhost:8080">http://localhost:8080</a> and log in with <code>admin</code> / <code>admin</code>.</p>
+
+<h2>Makefile Targets</h2>
+
+<table>
+  <thead>
+    <tr><th>Target</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>make prod-build</code></td><td>Build the Airflow Docker image</td></tr>
+    <tr><td><code>make prod-init</code></td><td>Run DB migrations + create admin user</td></tr>
+    <tr><td><code>make prod-up</code></td><td>Start the full Airflow stack</td></tr>
+    <tr><td><code>make prod-down</code></td><td>Stop the Airflow stack</td></tr>
+  </tbody>
+</table>
+
+<h2>Services</h2>
+
+<table>
+  <thead>
+    <tr><th>Service</th><th>Port</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>postgres</td><td>-</td><td>Airflow metadata database</td></tr>
+    <tr><td>redis</td><td>-</td><td>Celery broker and result backend</td></tr>
+    <tr><td>airflow-webserver</td><td>8080</td><td>Airflow UI</td></tr>
+    <tr><td>airflow-scheduler</td><td>-</td><td>DAG scheduling</td></tr>
+    <tr><td>airflow-triggerer</td><td>-</td><td>Deferrable operator execution</td></tr>
+    <tr><td>airflow-worker</td><td>-</td><td>Celery task execution</td></tr>
+  </tbody>
+</table>
+
+<h2>DAG</h2>
+
+<p>The <code>wildbook_pipeline</code> DAG runs the example pipeline on a <code>@daily</code> schedule. It uses a single <code>BashOperator</code> task that executes:</p>
+
+<pre><code>cd /opt/airflow/wildbook-pipeline && kedro run --pipeline example</code></pre>
+
+<p>The DAG is defined in <code>dags/wildbook_pipeline.py</code> and auto-discovered by Airflow on startup.</p>
+
+<h2>Architecture</h2>
+
+<p>The stack uses CeleryExecutor for distributed task execution:</p>
+
+<ul>
+  <li><strong>PostgreSQL</strong> stores DAG metadata, run history, and task state</li>
+  <li><strong>Redis</strong> acts as the Celery message broker and result backend</li>
+  <li><strong>Scheduler</strong> monitors DAGs and queues tasks</li>
+  <li><strong>Worker</strong> picks up tasks from Redis and executes them</li>
+  <li><strong>Triggerer</strong> handles deferrable (async) operators</li>
+  <li><strong>Webserver</strong> provides the Airflow UI</li>
+</ul>
+</main>
+
+<footer>
+  <p>Wildbook Pipeline &mdash; powered by Kedro</p>
+</footer>
+</body>
+</html>
