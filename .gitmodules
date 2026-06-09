@@ -10,9 +10,6 @@
 [submodule "ml-service"]
 	path = ml-service
 	url = git@github.com:WildMeOrg/ml-service.git
-[submodule "wbia-tpl-pyhesaff"]
-	path = wbia-tpl-pyhesaff
-	url = https://github.com/WildMeOrg/wbia-tpl-pyhesaff.git
 [submodule "wbia-core/wbia-tpl-pyhesaff"]
 	path = wbia-core/wbia-tpl-pyhesaff
 	url = https://github.com/WildMeOrg/wbia-tpl-pyhesaff.git
