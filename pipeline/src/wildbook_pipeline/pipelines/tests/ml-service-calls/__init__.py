@@ -3,11 +3,8 @@ from __future__ import annotations
 from kedro.pipeline import Pipeline, node, pipeline
 
 from .nodes import (
-    build_faiss_clip,
-    build_faiss_miewid,
     classify,
     detect,
-    extract_clip,
     extract_hotspotter_sift,
     extract_miewid,
     identify,
@@ -42,38 +39,16 @@ def create_pipeline(**kwargs) -> Pipeline:
                 func=detect,
                 inputs=[
                     "images_newml",
-                    "params:onnx_model_dir",
-                    "params:onnx_yolo_model",
-                    "params:onnx_yolo_repo",
-                    "params:onnx_yolo_subdir",
-                    "params:yolo_imgsz",
-                    "params:yolo_conf_threshold",
-                    "params:yolo_nms_threshold",
+                    "params:ml_service_url",
+                    "params:predict_model_id",
+                    "params:predict_params",
                 ],
                 outputs="images_detected_newml",
                 name="detect_newml_node",
             ),
             node(
-                func=extract_clip,
-                inputs=["images_detected_newml"],
-                outputs="images_clip_newml",
-                name="extract_clip_newml_node",
-            ),
-            node(
-                func=build_faiss_clip,
-                inputs=[
-                    "images_clip_newml",
-                    "params:faiss_index_dir",
-                ],
-                outputs="faiss_clip_newml",
-                name="build_faiss_clip_node",
-            ),
-            node(
                 func=classify,
-                inputs=[
-                    "faiss_clip_newml",
-                    "params:species_labels",
-                ],
+                inputs=["images_detected_newml"],
                 outputs="images_classified_newml",
                 name="classify_newml_node",
             ),
@@ -81,10 +56,8 @@ def create_pipeline(**kwargs) -> Pipeline:
                 func=extract_miewid,
                 inputs=[
                     "images_classified_newml",
-                    "params:onnx_model_dir",
-                    "params:onnx_miewid_model",
-                    "params:onnx_miewid_repo",
-                    "params:miewid_imgsz",
+                    "params:ml_service_url",
+                    "params:extract_model_id",
                 ],
                 outputs="images_embedded_newml",
                 name="extract_miewid_newml_node",
@@ -96,18 +69,9 @@ def create_pipeline(**kwargs) -> Pipeline:
                 name="extract_sift_newml_node",
             ),
             node(
-                func=build_faiss_miewid,
-                inputs=[
-                    "images_sift_newml",
-                    "params:faiss_index_dir",
-                ],
-                outputs="faiss_miewid_newml",
-                name="build_faiss_miewid_node",
-            ),
-            node(
                 func=store_features,
                 inputs=[
-                    "faiss_miewid_newml",
+                    "images_sift_newml",
                     "params:feature_store_csv",
                 ],
                 outputs="stored_features_newml",

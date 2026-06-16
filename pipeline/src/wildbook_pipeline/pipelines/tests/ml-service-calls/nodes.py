@@ -1,42 +1,25 @@
 from __future__ import annotations
 
-import base64
 import json
-import random as _random
-import time
 from pathlib import Path
-from typing import Any
 
 import requests
 
-
-def _load_image_bytes(image_uri: str) -> bytes:
-    if image_uri.startswith(("http://", "https://")):
-        resp = requests.get(image_uri, timeout=120)
-        resp.raise_for_status()
-        return resp.content
-    return Path(image_uri).read_bytes()
+from ...new_ml._core import (
+    b64 as _b64,
+    load_image_bytes as _load_image_bytes,
+    resolve_coco_image as _resolve_coco_image,
+)
 
 
-def _b64(img: bytes) -> str:
-    return base64.b64encode(img).decode("utf-8")
+def minio_sensor(coco_json_path: str) -> str:
+    return coco_json_path
 
 
-def _resolve_coco_image(coco_images_path: str, file_name: str) -> str:
-    base = Path(coco_images_path)
-    for subdir in ("train2020", "val2020", "test2020"):
-        candidate = base / subdir / file_name
-        if candidate.exists():
-            return str(candidate)
-    return str(base / file_name)
-
-
-def load_dataset(
-    coco_json_path: str,
+def load_from_url(
+    raw_images: str,
     coco_images_path: str,
-    n_images: int = 10,
-    n_query: int = 3,
-    seed: int = 42,
+    coco_json_path: str,
 ) -> list[dict]:
     with open(coco_json_path) as f:
         coco = json.load(f)
@@ -44,37 +27,20 @@ def load_dataset(
     images_by_id = {img["id"]: img for img in coco["images"]}
     annotations = coco.get("annotations", [])
 
-    rng = _random.Random(seed)
-    rng.shuffle(annotations)
-    selected = [
-        _normalize_coco_annot(a, images_by_id, coco_images_path)
-        for a in annotations[:n_images]
+    return [
+        {
+            "uri": _resolve_coco_image(
+                coco_images_path, images_by_id[a["image_id"]]["file_name"]
+            ),
+            "annot_id": a["id"],
+            "file_name": images_by_id[a["image_id"]]["file_name"],
+            "image_id": a["image_id"],
+            "bbox": a["bbox"],
+            "category_id": a.get("category_id", -1),
+            "individual_ids": a.get("individual_ids", []),
+        }
+        for a in annotations[:10]
     ]
-
-    query_indices = set(rng.sample(range(len(selected)), min(n_query, len(selected))))
-
-    for i, img in enumerate(selected):
-        img["is_query"] = i in query_indices
-
-    return selected
-
-
-def _normalize_coco_annot(
-    ann: dict,
-    images_by_id: dict,
-    coco_images_path: str,
-) -> dict:
-    img_info = images_by_id.get(ann["image_id"], {})
-    file_name = img_info.get("file_name", "")
-    return {
-        "uri": _resolve_coco_image(coco_images_path, file_name),
-        "annot_id": ann["id"],
-        "file_name": file_name,
-        "image_id": ann["image_id"],
-        "bbox": ann["bbox"],
-        "category_id": ann.get("category_id", -1),
-        "individual_ids": ann.get("individual_ids", []),
-    }
 
 
 def detect(
@@ -102,15 +68,21 @@ def detect(
     return results
 
 
+def classify(images: list[dict]) -> list[dict]:
+    for img in images:
+        img["classification"] = "zebra_plains"
+    return images
+
+
 def extract_miewid(
-    images_with_detections: list[dict],
+    images: list[dict],
     ml_service_url: str,
     extract_model_id: str,
     score_threshold: float = 0.25,
 ) -> list[dict]:
     url = f"{ml_service_url}/extract/"
     results = []
-    for img in images_with_detections:
+    for img in images:
         dets = img.get("detections", {})
         bboxes = dets.get("bboxes", [])
         scores = dets.get("scores", [])
@@ -146,8 +118,35 @@ def extract_miewid(
     return results
 
 
-def identify_hotspotter(
-    images_with_embeddings: list[dict],
+def extract_hotspotter_sift(images: list[dict]) -> list[dict]:
+    return images
+
+
+def store_features(images: list[dict], feature_store_csv: str) -> list[dict]:
+    Path(feature_store_csv).parent.mkdir(parents=True, exist_ok=True)
+    rows = []
+    for img in images:
+        for chip in img.get("chips", []):
+            rows.append(
+                {
+                    "annot_id": img["annot_id"],
+                    "bbox": chip["bbox"],
+                    "species": img.get("classification", ""),
+                    "embedding_dim": len(chip.get("embedding", [])),
+                }
+            )
+    import csv
+
+    if rows:
+        with open(feature_store_csv, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=rows[0].keys())
+            writer.writeheader()
+            writer.writerows(rows)
+    return images
+
+
+def identify(
+    images: list[dict],
     database: list[dict],
     wbia_core_url: str,
     identify_config: dict | None = None,
@@ -166,7 +165,7 @@ def identify_hotspotter(
             }
         )
     results = []
-    for img in images_with_embeddings:
+    for img in images:
         img_bytes = _load_image_bytes(img["uri"])
         for chip in img.get("chips", []):
             if not db_entries:
@@ -209,7 +208,7 @@ def store_results(identified: list[dict], output_path: str) -> list[dict]:
                     "bbox": chip["bbox"],
                     "theta": chip.get("theta", 0.0),
                     "score": chip.get("score", 0.0),
-                    "classification": chip.get("classification"),
+                    "classification": chip.get("classification", ""),
                     "embedding": chip.get("embedding", [])[:16],
                     "hotspotter_top": (
                         chip.get("hotspotter_scores", [{}])[0]
@@ -221,3 +220,7 @@ def store_results(identified: list[dict], output_path: str) -> list[dict]:
     with open(output_path, "w") as f:
         json.dump(summary, f, indent=2)
     return summary
+
+
+def notify(identified: list[dict]) -> list[dict]:
+    return identified

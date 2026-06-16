@@ -41,6 +41,36 @@ output_path: "/app/data/04_report/results.json"
 output_path_109: "/app/data/04_report/results_109.json"
 output_path_coco: "/app/data/04_report/results_coco.json"
 output_path_newml: "/app/data/04_report/results_newml.json"
+output_path_mlsc: "/app/data/04_report/results_mlsc.json"
 
 # Feature store (new_ml pipeline stub)
 feature_store_csv: "/app/data/05_features/chips.csv"
+
+# -------- new_ml pipeline (opencv + ONNX) --------
+
+# HuggingFace model repos
+onnx_model_dir: "/app/models"
+onnx_yolo_model: "model.onnx"
+onnx_yolo_repo: "onnx-community/yolo26n-ONNX"
+onnx_yolo_subdir: "onnx"
+onnx_miewid_model: "miewid.onnx"
+onnx_miewid_repo: "james-burgess/wildbook"
+
+# YOLO detection
+yolo_imgsz: 640
+yolo_conf_threshold: 0.25
+yolo_nms_threshold: 0.45
+yolo_class_filter: []  # empty = all classes; [22, 23] = zebra + giraffe only
+
+# CLIP zero-shot species classification
+species_labels:
+  - plains_zebra
+  - grevys_zebra
+  - reticulated_giraffe
+  - masai_giraffe
+
+# MiewID embedding
+miewid_imgsz: 440
+
+# FAISS index directory
+faiss_index_dir: "/app/data/09_index"

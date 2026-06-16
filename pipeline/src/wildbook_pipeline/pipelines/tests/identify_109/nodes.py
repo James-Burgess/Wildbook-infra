@@ -14,6 +14,12 @@ from threading import Thread
 
 import requests
 
+from ...new_ml._core import (
+    b64 as _b64,
+    load_image_bytes as _load_image_bytes,
+    resolve_coco_image as _resolve_coco_image,
+)
+
 
 class _WBIAHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -48,27 +54,6 @@ def _start_file_server(annots: list[dict], tmp_dir: str) -> tuple[int, str]:
     Thread(target=server.serve_forever, daemon=True).start()
     time.sleep(0.5)
     return _SHARED_SERVER_PORT, _get_container_ip()
-
-
-def _load_image_bytes(image_uri: str) -> bytes:
-    if image_uri.startswith(("http://", "https://")):
-        resp = requests.get(image_uri, timeout=120)
-        resp.raise_for_status()
-        return resp.content
-    return Path(image_uri).read_bytes()
-
-
-def _b64(img: bytes) -> str:
-    return base64.b64encode(img).decode("utf-8")
-
-
-def _resolve_coco_image(coco_images_path: str, file_name: str) -> str:
-    base = Path(coco_images_path)
-    for subdir in ("train2020", "val2020", "test2020"):
-        candidate = base / subdir / file_name
-        if candidate.exists():
-            return str(candidate)
-    return str(base / file_name)
 
 
 def _post(url: str, data: dict, timeout: int = 300) -> dict:

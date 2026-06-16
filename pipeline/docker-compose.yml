@@ -7,11 +7,13 @@ services:
       - ./conf:/app/conf
       - ./data:/app/data
       - ./logs:/app/logs
+      - ./models:/app/models
       - ../wbia-core/tests/test-dataset:/app/tests/test-dataset:ro
       - ./src:/app/src
       - ./tests:/app/tests/pipeline
     environment:
       - KEDRO_LOGGING_CONFIG=conf/base/logging.yml
+      - HF_TOKEN=${HF_TOKEN}
     command: kedro run --pipeline identify
     networks:
       - wildbook-net

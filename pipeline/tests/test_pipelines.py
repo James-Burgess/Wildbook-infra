@@ -10,13 +10,15 @@ from pathlib import Path
 
 import pytest
 
-from wildbook_pipeline.pipelines.identify.nodes import (
+from wildbook_pipeline.pipelines.tests.identify.nodes import (
     detect,
     extract_miewid,
     identify_hotspotter,
 )
-from wildbook_pipeline.pipelines.identify_109.nodes import identify_wbia
-from wildbook_pipeline.pipelines.identify_1010_coco.nodes import prepare_coco_bboxes
+from wildbook_pipeline.pipelines.tests.identify_109.nodes import identify_wbia
+from wildbook_pipeline.pipelines.tests.identify_1010_coco.nodes import (
+    prepare_coco_bboxes,
+)
 from wildbook_pipeline.pipelines.new_ml.nodes import (
     classify,
     extract_hotspotter_sift,
@@ -159,7 +161,7 @@ def results_newml_yolo(
     requires_service(wbia_core_url)
     images = copy.deepcopy(reference_batch["annotations"])
     images = detect(images, ml_service_url, predict_model_id, predict_params)
-    images = classify(images)
+    images = classify(images, ["plains_zebra", "grevys_zebra"])
     images = extract_miewid(images, ml_service_url, extract_model_id)
     images = extract_hotspotter_sift(images)
     images = store_features(images, str(results_dir / "features_newml.csv"))
@@ -199,7 +201,7 @@ def results_newml_coco(
     requires_service(wbia_core_url)
     images = copy.deepcopy(reference_batch["annotations"])
     images = prepare_coco_bboxes(images)
-    images = classify(images)
+    images = classify(images, ["plains_zebra", "grevys_zebra"])
     images = extract_miewid(images, ml_service_url, extract_model_id)
     images = extract_hotspotter_sift(images)
     images = store_features(images, str(results_dir / "features_newml_coco.csv"))

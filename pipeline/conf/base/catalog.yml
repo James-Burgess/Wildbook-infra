@@ -61,6 +61,15 @@ images_embedded_newml:
 images_sift_newml:
   type: MemoryDataset
 
+images_clip_newml:
+  type: MemoryDataset
+
+faiss_miewid_newml:
+  type: MemoryDataset
+
+faiss_clip_newml:
+  type: MemoryDataset
+
 stored_features_newml:
   type: MemoryDataset
 
@@ -71,4 +80,36 @@ results_newml:
   type: MemoryDataset
 
 notification_newml:
+  type: MemoryDataset
+
+## ml_service_calls pipeline (HTTP-based, for comparison)
+
+raw_images_mlsc:
+  type: MemoryDataset
+
+images_mlsc:
+  type: MemoryDataset
+
+images_detected_mlsc:
+  type: MemoryDataset
+
+images_classified_mlsc:
+  type: MemoryDataset
+
+images_embedded_mlsc:
+  type: MemoryDataset
+
+images_sift_mlsc:
+  type: MemoryDataset
+
+stored_features_mlsc:
+  type: MemoryDataset
+
+identified_mlsc:
+  type: MemoryDataset
+
+results_mlsc:
+  type: MemoryDataset
+
+notification_mlsc:
   type: MemoryDataset
