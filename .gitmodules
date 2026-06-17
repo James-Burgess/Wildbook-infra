@@ -10,12 +10,9 @@
 [submodule "ml-service"]
 	path = ml-service
 	url = git@github.com:WildMeOrg/ml-service.git
-[submodule "wbia-core/wbia-tpl-pyhesaff"]
-	path = wbia-core/wbia-tpl-pyhesaff
-	url = https://github.com/WildMeOrg/wbia-tpl-pyhesaff.git
-[submodule "wbia-core/wbia-utool"]
-	path = wbia-core/wbia-utool
-	url = https://github.com/WildMeOrg/wbia-utool.git
-[submodule "wbia-core/wbia-vtool"]
-	path = wbia-core/wbia-vtool
-	url = https://github.com/WildMeOrg/wbia-vtool.git
+[submodule "pipeline"]
+	path = pipeline
+	url = git@github.com:James-Burgess/pipeline.git
+[submodule "wbia-core"]
+	path = wbia-core
+	url = git@github.com:James-Burgess/wbia-core.git

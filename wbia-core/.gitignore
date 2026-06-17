@@ -1,4 +1,0 @@
-tests/test-dataset/
-test-run-results-*
-.venv/
-*.pyc
