@@ -2,7 +2,10 @@
 
 ## Repository overview
 
-Docker-orchestrated monorepo for the Wildbook wildlife conservation platform. Uses git submodules.
+Git submodule monorepo for the **Wildbook Modernisation Project** — a ground-up rebuild of the Wildbook
+wildlife conservation platform. Houses all repos needed to run the legacy system and the new pipeline
+side by side for parity testing, with the goal of deprecating the old stack once feature parity is
+achieved.
 
 ```
 wildbook-infra/
@@ -15,12 +18,33 @@ wildbook-infra/
 │   ├── wbia-vtool/       #   vendored git submodule (vision tools, libsver.so)
 │   ├── wbia-tpl-pyhesaff/#   vendored git submodule (hessian-affine SIFT, libhesaff.so)
 │   └── Dockerfile        #   Self-contained Docker build
+├── pipeline/             # Kedro ML pipeline + benchmark (git submodule)
+│   ├── src/wildbook_pipeline/  #   Kedro package
+│   ├── tests/                  #   Pipeline comparison tests
+│   │   ├── benchmark/          #     COCO multi-target regression suite
+│   │   ├── conftest.py
+│   │   └── test_pipelines.py
+│   ├── dags/                   #   Airflow DAG definitions
+│   └── docker-compose.yml      #   Kedro + docs + viz
 ├── wildbook/             # Wildbook platform (Java/Tomcat, port 8080)
 ├── ml-service/           # ML service (Python, separate from wbia-core)
 ├── tests/                # BDD behave integration tests (Python)
 ├── wildbook-docs/        # Documentation
 └── docs/                 # Infrastructure docs
 ```
+
+### Project philosophy: run old and new together
+
+The monorepo is deliberately structured so that every component from the old stack
+(`wildbook-ia`, `wildbook`) and the new stack (`wbia-core`, `pipeline`, `ml-service`)
+can be brought up simultaneously via `docker-compose`. This enables:
+
+- **Parity testing** — send the same identification request to both `wbia-core`
+  (new) and `wildbook-ia` (legacy) and assert identical rankings.
+- **Benchmark regression** — the `pipeline/tests/benchmark/` suite runs wbia-core
+  against recorded WBIA reference data to catch regressions.
+- **Incremental cutover** — new pipeline nodes (detect, classify, identify) can
+  be validated in isolation before replacing their legacy counterparts.
 
 ## Two distinct Python projects
 
@@ -68,16 +92,16 @@ docker run --rm -v /var/run/docker.sock:/var/run/docker.sock --network host \
 Runs wbia-core against COCO data and compares rankings to recorded WBIA reference:
 
 ```bash
-cd wbia-core
-python3 tests/benchmark/run_benchmark.py \
+cd pipeline/tests
+python3 -m benchmark.run_benchmark \
   --n-annots 10 --n-queries 3 \
-  --reference tests/benchmark/reference/wbia-latest-10/ \
+  --reference benchmark/reference/wbia-latest-10/ \
   --seed 42
 ```
 
 **Must run from host** — the runner uses `docker` CLI to start the sidecar container. Results go to `test-results/test-run-results-*/`. Analyze with:
 ```bash
-python3 tests/benchmark/analyze.py report test-results/<run-dir>/
+python3 -m benchmark.analyze report test-results/<run-dir>/
 ```
 
 ### wbia-core API

@@ -1,0 +1,59 @@
+services:
+  wbia:
+    image: wildme/wbia:nightly
+    container_name: wbia
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./patches/wbia-entrypoint.sh:/entrypoint.sh:ro
+      - ./patches/patch_wbia_schema.py:/patches/patch_wbia_schema.py:ro
+      - wbia-data:/data/db
+      - wbia-cache:/cache
+    entrypoint: ["/bin/bash", "/entrypoint.sh"]
+    environment:
+      - PYTHONUNBUFFERED=1
+      - WBIA_DB_URI=postgresql://wbia:wbia@db:5432/wbia
+    networks:
+      - wildbook-net
+    restart: no
+
+  wbia-core:
+    image: wbia-core:latest
+    container_name: wbia-core
+    ports:
+      - "5001:5000"
+    networks:
+      - wildbook-net
+    restart: no
+
+  ml-service:
+    build:
+      context: ./ml-service
+      dockerfile: docker/dockerfile
+    image: docker-ml-service
+    container_name: ml-service
+    ports:
+      - "6050:6050"
+    volumes:
+      - ./ml-service/docker/model_config_poc.json:/app/app/model_config.json:ro
+      - ./wbia-core/tests/test-dataset:/app/tests/test-dataset:ro
+      - ./pipeline/tests/assets:/app/tests/pipeline/assets:ro
+    environment:
+      - PYTHONPATH=/app
+      - HF_HUB_DISABLE_SYMLINKS_WARNING=1
+      - TRANSFORMERS_VERBOSITY=error
+    command: python3 -m app.main --host 0.0.0.0 --port 6050 --device cpu --workers 1
+    networks:
+      - wildbook-net
+    restart: no
+
+volumes:
+  wbia-data:
+    name: wildbook-wbia-data
+  wbia-cache:
+    name: wildbook-wbia-cache
+
+networks:
+  wildbook-net:
+    external: true
+    name: wildbook-network

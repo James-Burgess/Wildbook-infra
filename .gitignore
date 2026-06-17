@@ -1,0 +1,12 @@
+# Test data / fixtures (large files)
+test-files/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*.swo
+*~
+\#*\#
