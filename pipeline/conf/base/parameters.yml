@@ -54,7 +54,7 @@ onnx_yolo_model: "model.onnx"
 onnx_yolo_repo: "onnx-community/yolo26n-ONNX"
 onnx_yolo_subdir: "onnx"
 onnx_miewid_model: "miewid.onnx"
-onnx_miewid_repo: "james-burgess/wildbook"
+onnx_miewid_repo: "james-burgess/miewid"
 
 # YOLO detection
 yolo_imgsz: 640
